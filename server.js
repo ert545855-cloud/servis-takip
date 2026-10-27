@@ -51,7 +51,7 @@ const SESSION_DAYS = 30;
 const ROLES = new Set(['admin', 'user', 'satici', 'viewer']);
 const ACTIVE_T = new Set(['teslim_alindi', 'servise_gonderildi', 'serviste', 'servisten_geldi', 'musteriye_teslim', 'fatura_talep', 'acik', 'islemde', 'parca']);
 const REQ_LABEL = { yeni: 'Yeni talep', talep_edildi: 'Talep edildi', yolda: 'Yolda', geldi: 'Şubeye geldi', tamamlandi: 'Tamamlandı', iptal: 'Karşılanamadı / iptal' };
-const SELLER_FIELDS = new Set(['productName', 'productCode', 'qty', 'fromBranch', 'purpose', 'customerName', 'customerPhone', 'note', 'neededBy', 'priority', 'updatedAt', 'log', 'comments', 'status']);
+const SELLER_FIELDS = new Set(['productName', 'productCode', 'barcode', 'qty', 'fromBranch', 'purpose', 'customerName', 'customerPhone', 'note', 'neededBy', 'priority', 'updatedAt', 'log', 'comments', 'status']);
 
 /* ---------------- helpers ---------------- */
 const newId = (n = 20) => {
@@ -143,6 +143,9 @@ async function migrate() {
     CREATE TABLE IF NOT EXISTS push_subs (
       endpoint TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
     CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value JSONB NOT NULL);
+    CREATE TABLE IF NOT EXISTS trash (
+      coll TEXT NOT NULL, id TEXT NOT NULL, data JSONB NOT NULL, deleted_by TEXT, deleted_by_name TEXT,
+      deleted_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (coll, id));
   `);
   await migrateFromOld();
   const { rows } = await pool.query('SELECT count(*)::int AS n FROM users');
@@ -167,6 +170,20 @@ async function migrate() {
     } catch (e) { console.error('SEED_JSON okunamadı:', e.message); }
   }
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
+  await purgeTrash();
+}
+/* çöp kutusu: 30 günden eski silinenler kalıcı olarak silinir */
+const TRASH_DAYS = 30;
+function ticketFileIds(t) { return [...new Set([...(t.attachments || []).map(a => a && a.id), t.signature && t.signature.fileId, t.warrantyDocId].filter(validIdS))]; }
+function validIdS(x) { return typeof x === 'string' && /^[A-Za-z0-9_\-]{1,120}$/.test(x); }
+async function dropFiles(ids) { if (ids.length) await pool.query('DELETE FROM files WHERE id = ANY($1::text[])', [ids]); }
+async function purgeTrash() {
+  try {
+    const { rows } = await pool.query(`DELETE FROM trash WHERE deleted_at < now() - interval '${TRASH_DAYS} days' RETURNING coll, data`);
+    const ids = rows.filter(r => r.coll === 'tickets').flatMap(r => ticketFileIds(r.data));
+    await dropFiles(ids);
+    if (rows.length) console.log('Çöp kutusundan kalıcı silindi:', rows.length);
+  } catch (e) { console.warn('Çöp kutusu temizlenemedi', e.message); }
 }
 async function migrateFromOld() {
   const oldUrl = process.env.OLD_DATABASE_URL;
@@ -283,21 +300,26 @@ function reqTable(d) {
 }
 
 /* ---------------- günlük rapor ---------------- */
-let reportBusy = false;
+let reportBusy = false, lastReportDay = null;
 async function maybeDailyReport(force) {
-  if (reportBusy) return { ok: false, reason: 'busy' };
   const now = istNow();
   if (!force) {
+    if (lastReportDay === now.date || reportBusy) return;
     if (now.weekday === 'Sun') return; if (now.hour < 8 || (now.hour === 8 && now.minute < 40)) return;
+  } else {
+    for (let i = 0; reportBusy && i < 100; i++) await new Promise(r => setTimeout(r, 100));
+    if (reportBusy) return { ok: false, reason: 'busy' };
   }
   reportBusy = true;
   try {
     if (!force) {
       const r = await pool.query(`INSERT INTO meta (key, value) VALUES ('lastReport', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value WHERE meta.value <> EXCLUDED.value RETURNING key`, [JSON.stringify(now.date)]);
+      lastReportDay = now.date;
       if (!r.rows.length) return;
     }
     const st = await getSettings();
-    const to = st.reportEmail; if (!to) return { ok: false, reason: 'no_recipient' };
+    const to = st.reportEmail;
+    purgeTrash();
     const { rows } = await pool.query("SELECT coll, data FROM docs WHERE coll IN ('tickets','requests')");
     const tickets = rows.filter(r => r.coll === 'tickets').map(r => r.data);
     const reqs = rows.filter(r => r.coll === 'requests').map(r => r.data);
@@ -306,10 +328,20 @@ async function maybeDailyReport(force) {
     const soon = act.filter(t => t.dueAt && dayDiff(now.date, t.dueAt) >= 1 && dayDiff(now.date, t.dueAt) <= 2);
     const waiting = act.filter(t => t.status === 'servisten_geldi' && t.backAt && dayDiff(t.backAt, now.date) >= (Number(st.waitDays) || 3));
     const newReq = reqs.filter(r => r.status === 'yeni');
+    const notify = act.filter(t => t.status === 'servisten_geldi' && !(t.sms || []).some(x => x.stage === 'servisten_geldi'));
+    const warnCal = Math.ceil((Number(st.serviceWarnDays) || 15) * 7 / 5);
+    const longSvc = act.filter(t => ['servise_gonderildi', 'serviste'].includes(t.status) && t.sentAt && dayDiff(t.sentAt, now.date) >= warnCal);
+    const loans = tickets.filter(t => t.loaner && t.loaner.name && !t.loaner.backAt);
+    const exch = tickets.filter(t => ['degisim', 'iade'].includes(t.serviceResult) && t.exchange && !t.exchange.doneAt && !['kapandi'].includes(t.status));
+    if (!force) {
+      const parts = [late.length && `${late.length} gecikmiş`, waiting.length && `${waiting.length} mağazada bekleyen`, notify.length && `${notify.length} müşteriye haber verilecek`, longSvc.length && `${longSvc.length} serviste uzun kalan`, loans.length && `${loans.length} ödünç ürün dışarıda`, newReq.length && `${newReq.length} yeni talep`].filter(Boolean);
+      if (parts.length) pushStaff({ title: 'Günaydın · bugünün hatırlatmaları', body: parts.join(' · '), url: (APP_URL || '') + '/#pano', tag: 'daily' });
+    }
+    if (!to) return { ok: false, reason: 'no_recipient' };
     const tbl = (title, list, color) => list.length ? `<h3 style="font-size:15px;margin:18px 0 6px;color:${color || '#15201E'}">${esc(title)} (${list.length})</h3><table style="border-collapse:collapse;width:100%;font-size:13px">${list.map(t => `<tr><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8;font-family:monospace">${esc(t.no)}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8">${esc(t.customerName || t.requesterName || '')}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8">${esc(t.productName || '')}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8">${esc(t.firmName || t.fromBranch || '')}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8;white-space:nowrap">${esc(trDate(t.dueAt || t.createdAt))}</td></tr>`).join('')}</table>` : '';
     const html = mailLayout(`Günlük rapor · ${trDate(now.date)}`,
       `<p><b>${act.length}</b> açık kayıt · <b style="color:#C0352A">${late.length}</b> süresi geçen · <b>${today.length}</b> bugün dolan · <b>${soon.length}</b> 2 gün içinde · <b>${waiting.length}</b> mağazada bekleyen · <b>${newReq.length}</b> yeni ürün talebi</p>
-      ${tbl('Fatura süresi geçenler', late, '#C0352A')}${tbl('Bugün son gün', today)}${tbl('2 gün içinde dolacaklar', soon)}${tbl('Servisten geldi, müşteri almadı', waiting)}${tbl('Yanıt bekleyen ürün talepleri', newReq)}
+      ${tbl('Fatura süresi geçenler', late, '#C0352A')}${tbl('Bugün son gün', today)}${tbl('2 gün içinde dolacaklar', soon)}${tbl('Servisten geldi, müşteri almadı', waiting)}${tbl('Servisten geldi, müşteriye haber verilmedi', notify, '#A86300')}${tbl('Serviste uzun kalanlar', longSvc, '#A86300')}${tbl('Ödünç ürünü müşteride olanlar', loans)}${tbl('Değişim / iade süreci açık', exch)}${tbl('Yanıt bekleyen ürün talepleri', newReq)}
       ${!(late.length + today.length + soon.length + waiting.length + newReq.length) ? '<p>Bugün takip edilecek kayıt yok.</p>' : ''}`,
       APP_URL ? { url: APP_URL, label: 'Panoyu aç' } : null);
     sendBackup(st.backupEmail || to).catch(e => console.warn('Yedek hatası', e.message));
@@ -518,6 +550,56 @@ function sellerSanitize(body, old, user) {
   }
   return { data: out };
 }
+/* alan bazında değişiklik geçmişi */
+const AUDIT_SKIP = new Set(['id', 'log', 'audit', 'comments', 'sms', 'attachments', 'parts', 'updatedAt', 'createdAt', 'createdBy', 'mailLog', 'reads', 'signature', 'publicToken', 'dupOf', 'slaBusiness', 'slaDays', 'imported']);
+function flatDoc(o) {
+  const out = {};
+  for (const [k, v] of Object.entries(o || {})) {
+    if (AUDIT_SKIP.has(k) || /Id$/.test(k) || Array.isArray(v)) continue;
+    if (v && typeof v === 'object') { for (const [k2, v2] of Object.entries(v)) { if (v2 !== null && typeof v2 === 'object') continue; out[k + '.' + k2] = v2; } }
+    else out[k] = v;
+  }
+  return out;
+}
+function auditDiff(old, data) {
+  const a = flatDoc(old), b = flatDoc(data); const ch = [];
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const x = a[k] ?? '', y = b[k] ?? '';
+    if (String(x) !== String(y)) ch.push([k, x === '' ? null : String(x).slice(0, 200), y === '' ? null : String(y).slice(0, 200)]);
+  }
+  return ch;
+}
+async function onTicketChange(old, doc, actor, req) {
+  const url = `${baseUrl(req)}/?k=${doc.id}`;
+  if (doc.assigneeId && doc.assigneeId !== (old && old.assigneeId) && doc.assigneeId !== actor.id)
+    pushUser(doc.assigneeId, { title: 'Size kayıt atandı', body: `${doc.no || ''} · ${doc.customerName || ''} · ${doc.productName || ''} (${actor.name})`, url, tag: 'as-' + doc.id });
+  const oc = ((old && old.comments) || []).length, nc = (doc.comments || []).length;
+  if (old && nc > oc) {
+    const c = doc.comments[nc - 1] || {}; const text = String(c.text || '');
+    const targets = new Set(); if (doc.assigneeId) targets.add(doc.assigneeId);
+    if (text.includes('@')) {
+      const { rows } = await pool.query("SELECT id, name FROM users WHERE status = 'active' AND role IN ('admin','user')");
+      const low = text.toLocaleLowerCase('tr-TR');
+      for (const u of rows) { const n = String(u.name || '').toLocaleLowerCase('tr-TR'); const first = n.split(' ')[0]; if (n && (low.includes('@' + n) || (first.length > 2 && low.includes('@' + first)))) targets.add(u.id); }
+    }
+    targets.delete(actor.id);
+    for (const uid of targets) pushUser(uid, { title: `Yorum: ${doc.no || ''} · ${doc.customerName || ''}`, body: `${actor.name}: ${text.slice(0, 140)}`, url, tag: 'cm-' + doc.id });
+  }
+}
+/* aynı müşteri + aynı ürün için açık / yakın tarihli talepler */
+function normS(v) { return String(v || '').trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, ' '); }
+function phoneKey(p) { const d = String(p || '').replace(/\D/g, ''); return d.length >= 10 ? d.slice(-10) : ''; }
+async function findDupRequests(q, exceptId) {
+  const code = String(q.productCode || '').trim().toUpperCase(), name = normS(q.productName);
+  const cust = normS(q.customerName), ph = phoneKey(q.customerPhone);
+  if ((!code && !name) || (!cust && !ph)) return [];
+  const { rows } = await pool.query("SELECT id, data FROM docs WHERE coll = 'requests' AND id <> $1 AND (data->>'status' NOT IN ('tamamlandi','iptal') OR (data->>'createdAt') > $2)", [exceptId || '', new Date(Date.now() - 30 * 864e5).toISOString()]);
+  return rows.filter(({ data: r }) => {
+    const sameProd = (code && String(r.productCode || '').toUpperCase() === code) || (!code && name && normS(r.productName) === name) || (code && name && normS(r.productName) === name);
+    const sameCust = (ph && phoneKey(r.customerPhone) === ph) || (cust && normS(r.customerName) === cust);
+    return r.purpose === 'musteri' && sameProd && sameCust;
+  }).map(({ id, data: r }) => ({ id, no: r.no, status: r.status, statusLabel: REQ_LABEL[r.status] || r.status, requesterName: r.requesterName || '', toBranch: r.toBranch || '', fromBranch: r.fromBranch || '', createdAt: r.createdAt, productName: r.productName, productCode: r.productCode, customerName: r.customerName }));
+}
 async function writeDoc(req, res, mode) {
   if (!checkDoc(req, res)) return;
   const { coll, id } = req.params;
@@ -547,6 +629,13 @@ async function writeDoc(req, res, mode) {
     if (data.status === 'geldi' && !data.arrivedAt) data.arrivedAt = nowIso;
     if (data.status === 'tamamlandi' && !data.completedAt) { data.completedAt = nowIso; if (!data.arrivedAt) data.arrivedAt = nowIso; }
     if (data.status === 'iptal' && !data.cancelledAt) data.cancelledAt = nowIso;
+    if (!old && data.purpose === 'musteri') { const d = await findDupRequests(data, id); data.dupOf = d.map(x => x.no).filter(Boolean).slice(0, 10); }
+    else if (old) data.dupOf = old.dupOf || [];
+  }
+  if (coll === 'tickets' || coll === 'requests') {
+    const at = new Date().toISOString();
+    if (old) { const ch = auditDiff(old, data); data.audit = ch.length ? [...(old.audit || []), { at, by: req.user.id, byName: req.user.name, ch: ch.slice(0, 40) }].slice(-150) : (old.audit || []); }
+    else data.audit = [{ at, by: req.user.id, byName: req.user.name, ch: [['_created', null, null]] }];
   }
   if (coll === 'announcements') {
     if (old) { data.reads = old.reads || {}; data.createdBy = old.createdBy; data.createdByName = old.createdByName; data.createdAt = old.createdAt; }
@@ -561,6 +650,8 @@ async function writeDoc(req, res, mode) {
     const n = params.length + 1;
     pushTo(`${sql} AND u.id <> $${n}`, [...params, req.user.id], { title: (doc.pinned ? '📌 ' : '') + 'Duyuru: ' + (doc.title || ''), body: String(doc.body || '').slice(0, 140), url: `${baseUrl(req)}/#duyurular`, tag: 'ann-' + id });
   }
+  if (coll === 'tickets') onTicketChange(old, doc, req.user, req).catch(e => console.warn(e.message));
+  if (coll === 'requests' && !old && (doc.dupOf || []).length) pushStaff({ title: 'Mükerrer olabilecek talep', body: `${doc.customerName || ''} · ${doc.productName || ''} için zaten talep var: ${doc.dupOf.join(', ')}`, url: `${baseUrl(req)}/#talepler`, tag: 'dup-' + id }, req.user.id);
   if (coll === 'tickets' && old && old.status !== doc.status && doc.status === 'servisten_geldi')
     pushStaff({ title: 'Ürün servisten geldi', body: `${doc.no} · ${doc.customerName || ''} · ${doc.productName || ''}`, url: `${baseUrl(req)}/?k=${id}`, tag: 'tk-' + id }, req.user.id);
 }
@@ -572,9 +663,91 @@ app.delete('/api/docs/:coll/:id', wrap(auth), wrap(async (req, res) => {
   const { coll, id } = req.params;
   const old = await getDoc(coll, id);
   if (req.user.role === 'satici' && old && (old.requesterId !== req.user.id || old.status !== 'yeni')) return res.status(403).json({ error: 'Sadece işleme alınmamış kendi taleplerinizi silebilirsiniz' });
+  if (old && coll !== 'settings') { const { id: _i, ...data } = old; await pool.query('INSERT INTO trash (coll, id, data, deleted_by, deleted_by_name) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (coll, id) DO UPDATE SET data = EXCLUDED.data, deleted_by = EXCLUDED.deleted_by, deleted_by_name = EXCLUDED.deleted_by_name, deleted_at = now()', [coll, id, data, req.user.id, req.user.name]); }
   await pool.query('DELETE FROM docs WHERE coll = $1 AND id = $2', [coll, id]);
   broadcast({ type: 'doc', coll, id, doc: null, owner: old && old.requesterId });
+  res.json({ ok: true, trashed: !!old });
+}));
+
+/* çöp kutusu */
+const staffWrite = (req, res, next) => (STAFF_ROLES.has(req.user.role) ? next() : res.status(403).json({ error: 'Bu işlem için yetkiniz yok' }));
+app.get('/api/trash', wrap(auth), staffWrite, wrap(async (req, res) => {
+  const { rows } = await pool.query('SELECT coll, id, data, deleted_by_name, deleted_at FROM trash ORDER BY deleted_at DESC LIMIT 400');
+  res.json({ days: TRASH_DAYS, items: rows.map(r => ({ coll: r.coll, id: r.id, deletedAt: r.deleted_at, deletedByName: r.deleted_by_name, title: r.data.no ? `${r.data.no} · ${r.data.customerName || r.data.productName || ''}` : (r.data.title || r.data.name || r.data.productName || r.id), sub: [r.data.productName, r.data.firmName || r.data.fromBranch, r.data.requesterName].filter(Boolean).join(' · ') })) });
+}));
+app.post('/api/trash/:coll/:id/restore', wrap(auth), staffWrite, wrap(async (req, res) => {
+  const { coll, id } = req.params;
+  if (!COLLS.has(coll) || !validId(id)) return res.status(400).json({ error: 'Geçersiz kayıt' });
+  const { rows } = await pool.query('SELECT data FROM trash WHERE coll = $1 AND id = $2', [coll, id]);
+  if (!rows[0]) return res.status(404).json({ error: 'Çöp kutusunda bulunamadı' });
+  if (await getDoc(coll, id)) return res.status(409).json({ error: 'Bu kayıt zaten geri alınmış' });
+  const data = rows[0].data;
+  if (coll === 'tickets') data.log = [...(data.log || []), { at: new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Istanbul' }).slice(0, 16), text: 'Çöp kutusundan geri alındı', by: req.user.id }].slice(-80);
+  const doc = await putDoc(coll, id, data);
+  await pool.query('DELETE FROM trash WHERE coll = $1 AND id = $2', [coll, id]);
+  broadcast({ type: 'doc', coll, id, doc });
+  res.json(doc);
+}));
+app.delete('/api/trash/:coll/:id', wrap(auth), isAdmin, wrap(async (req, res) => {
+  const { coll, id } = req.params;
+  const { rows } = await pool.query('DELETE FROM trash WHERE coll = $1 AND id = $2 RETURNING data', [coll, id]);
+  if (rows[0] && coll === 'tickets') await dropFiles(ticketFileIds(rows[0].data));
   res.json({ ok: true });
+}));
+
+/* mükerrer talep kontrolü (satıcılar dahil) */
+app.post('/api/requests/dupcheck', express.json({ limit: '10kb' }), wrap(auth), wrap(async (req, res) => {
+  const b = req.body || {};
+  const list = await findDupRequests(b, String(b.exceptId || ''));
+  res.json({ items: list.slice(0, 10) });
+}));
+
+/* ürün kataloğu: barkod / madde kodu ile arama */
+function prodOut(id, p, cats, firms) { return { id, name: p.name, code: p.code || '', barcode: p.barcode || '', categoryId: p.categoryId || '', categoryName: (cats && cats.get(p.categoryId)) || '', firmId: p.firmId || '', firmName: (firms && firms.get(p.firmId)) || '', warrantyMonths: p.warrantyMonths ?? null }; }
+app.get('/api/lookup/product', wrap(auth), wrap(async (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 64);
+  if (q.length < 3) return res.json({ item: null });
+  const { rows } = await pool.query("SELECT id, data FROM docs WHERE coll = 'products' AND (upper(data->>'code') = upper($1) OR data->>'barcode' = $1 OR (data->'barcodes') ? $1) LIMIT 1", [q]);
+  if (!rows[0]) return res.json({ item: null });
+  const p = rows[0].data;
+  const nm = await pool.query("SELECT coll, id, data->>'name' AS name FROM docs WHERE (coll = 'categories' AND id = $1) OR (coll = 'firms' AND id = $2)", [p.categoryId || '', p.firmId || '']);
+  const cats = new Map(nm.rows.filter(r => r.coll === 'categories').map(r => [r.id, r.name])), firms = new Map(nm.rows.filter(r => r.coll === 'firms').map(r => [r.id, r.name]));
+  res.json({ item: prodOut(rows[0].id, p, cats, firms) });
+}));
+app.post('/api/import/products', express.json({ limit: '12mb' }), wrap(auth), staffWrite, wrap(async (req, res) => {
+  const rows = Array.isArray(req.body && req.body.rows) ? req.body.rows.slice(0, 30000) : [];
+  if (!rows.length) return res.status(400).json({ error: 'Aktarılacak satır yok' });
+  const all = await pool.query("SELECT coll, id, data FROM docs WHERE coll IN ('firms','categories','products')");
+  const byName = { firms: new Map(), categories: new Map() };
+  const pCode = new Map(), pBar = new Map(), pName = new Map(), prods = new Map();
+  for (const r of all.rows) {
+    if (byName[r.coll]) byName[r.coll].set(normS(r.data.name), r.id);
+    else { prods.set(r.id, r.data); if (r.data.code) pCode.set(String(r.data.code).toUpperCase(), r.id); if (r.data.barcode) pBar.set(String(r.data.barcode), r.id); if (r.data.name) pName.set(normS(r.data.name), r.id); }
+  }
+  const nowIso = new Date().toISOString(); const extra = [];
+  const ensure = (coll, name) => { const k = normS(name); if (!k) return ''; if (byName[coll].has(k)) return byName[coll].get(k); const id = newId(); byName[coll].set(k, id); extra.push({ coll, id, data: { name: String(name).trim().slice(0, 120), createdAt: nowIso } }); return id; };
+  let added = 0, updated = 0, skipped = 0; const out = new Map();
+  for (const r of rows) {
+    if (!r) { skipped++; continue; }
+    const code = String(r.code || '').trim().toUpperCase().slice(0, 40), barcode = String(r.barcode || '').replace(/\s/g, '').slice(0, 40), name = String(r.name || '').trim().slice(0, 160);
+    if (!name || (!code && !barcode)) { skipped++; continue; }
+    const id = (code && pCode.get(code)) || (barcode && pBar.get(barcode)) || pName.get(normS(name)) || null;
+    const base = id ? { ...(out.get(id) || prods.get(id)) } : { createdAt: nowIso };
+    base.name = name; if (code) base.code = code; if (barcode) base.barcode = barcode;
+    if (r.category) base.categoryId = ensure('categories', r.category);
+    if (r.firm) base.firmId = ensure('firms', r.firm);
+    if (r.brand) base.brand = String(r.brand).trim().slice(0, 80);
+    const wm = Number(r.warrantyMonths); if (r.warrantyMonths !== '' && r.warrantyMonths != null && wm >= 0 && wm <= 120) base.warrantyMonths = wm;
+    base.updatedAt = nowIso;
+    const pid = id || newId();
+    if (id) { if (!out.has(id)) updated++; } else added++;
+    out.set(pid, base); if (code) pCode.set(code, pid); if (barcode) pBar.set(barcode, pid); pName.set(normS(name), pid);
+  }
+  const items = [...extra, ...[...out].map(([id, data]) => ({ coll: 'products', id, data }))];
+  for (let i = 0; i < items.length; i += 2000)
+    await pool.query('INSERT INTO docs (coll, id, data) SELECT x.coll, x.id, x.data FROM jsonb_to_recordset($1::jsonb) AS x(coll text, id text, data jsonb) ON CONFLICT (coll, id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()', [JSON.stringify(items.slice(i, i + 2000))]);
+  broadcast({ type: 'reload' });
+  res.json({ ok: true, added, updated, skipped });
 }));
 
 /* duyuru okundu */
@@ -645,8 +818,10 @@ async function buildBackup() {
   if (XLSX) {
     const wb = XLSX.utils.book_new();
     const add = (name, rows) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Bilgi: 'Kayıt yok' }]); XLSX.utils.book_append_sheet(wb, ws, name); };
-    add('Arıza kayıtları', data.tickets.map(t => ({ 'Kayıt No': t.no, 'Kayıt Tarihi': t.openedAt, 'Durum': BK_STATUS[t.status] || t.status, 'Müşteri': t.customerName, 'Telefon': t.customerPhone || '', 'Ürün': t.productName, 'Kategori': t.categoryName, 'Firma': t.firmName, 'Seri No': t.serial || '', 'Arıza': t.desc || '', 'Garanti': t.warranty || '', 'Satış Tarihi': t.purchaseDate || '', 'Garanti Bitişi': t.warrantyEnd || '', 'Servise Gönderim': t.sentAt || '', 'Servisten Geliş': t.backAt || '', 'Müşteriye Teslim': t.deliveredAt || '', 'Fatura Son Tarihi': t.dueAt || '', 'Fatura No': t.invoiceNo || '', 'Fatura Tarihi': t.invoicedAt || '', 'Tutar (TL)': t.invoiceAmount ?? '', 'Memnuniyet': t.rating ? t.rating.score : '', 'Not': t.note || '' })));
+    add('Arıza kayıtları', data.tickets.map(t => ({ 'Kayıt No': t.no, 'Kayıt Tarihi': t.openedAt, 'Durum': BK_STATUS[t.status] || t.status, 'Müşteri': t.customerName, 'Telefon': t.customerPhone || '', 'Ürün': t.productName, 'Madde Kodu': t.productCode || '', 'Barkod': t.barcode || '', 'Kategori': t.categoryName, 'Firma': t.firmName, 'Seri No': t.serial || '', 'Arıza': t.desc || '', 'Garanti': t.warranty || '', 'Satış Tarihi': t.purchaseDate || '', 'Garanti Bitişi': t.warrantyEnd || '', 'Servise Gönderim': t.sentAt || '', 'Servisten Geliş': t.backAt || '', 'Müşteriye Teslim': t.deliveredAt || '', 'Fatura Son Tarihi': t.dueAt || '', 'Fatura No': t.invoiceNo || '', 'Fatura Tarihi': t.invoicedAt || '', 'Tutar (TL)': t.invoiceAmount ?? '', 'Memnuniyet': t.rating ? t.rating.score : '', 'Not': t.note || '' })));
     add('Ürün talepleri', data.requests.map(r => ({ 'Talep No': r.no, 'Tarih': (r.createdAt || '').slice(0, 10), 'Durum': REQ_LABEL[r.status] || r.status, 'Ürün': r.productName, 'Kod': r.productCode, 'Adet': r.qty, 'İstenen Şube': r.fromBranch, 'Talep Eden Şube': r.toBranch || '', 'Kimin İçin': r.purpose === 'musteri' ? 'Müşteri' : 'Mağaza', 'Müşteri': r.customerName || '', 'Satıcı': r.requesterName || '', 'Geliş': (r.arrivedAt || '').slice(0, 10) })));
+    { const cn = new Map(data.categories.map(c => [c.id, c.name])), fn = new Map(data.firms.map(f => [f.id, f.name]));
+      add('Ürün kataloğu', data.products.map(p => ({ 'Madde Kodu': p.code || '', 'Barkod': p.barcode || '', 'Ürün Adı': p.name, 'Kategori': cn.get(p.categoryId) || '', 'Marka / Firma': fn.get(p.firmId) || '', 'Garanti (ay)': p.warrantyMonths ?? '' }))); }
     add('Müşteriler', data.customers.map(c => ({ 'Ad': c.name, 'Telefon': c.phone || '', 'Adres': c.address || '' })));
     add('Firmalar', data.firms.map(f => ({ 'Ad': f.name, 'Telefon': f.phone || '', 'E-posta': f.email || '' })));
     add('Şubeler', data.branches.map(b => ({ 'Ad': b.name, 'Telefon': b.phone || '' })));

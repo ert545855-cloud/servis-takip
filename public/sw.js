@@ -1,5 +1,5 @@
 /* Ümraniye Şampiyonları — servis çalışanı: uygulama kabuğu ve telefon bildirimleri */
-const CACHE = 'us-v2';
+const CACHE = 'us-v3';
 const SHELL = ['/', '/icon.svg', '/icon-192.png', '/manifest.webmanifest', '/vendor/qrcode.js'];
 
 self.addEventListener('install', e => {
