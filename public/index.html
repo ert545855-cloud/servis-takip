@@ -93,23 +93,53 @@ h1,h2,h3,h4{text-wrap:balance}
 .page-h h1{font-family:var(--f-display);font-weight:800;font-size:1.5rem;margin:0;letter-spacing:-.01em;margin-right:auto}
 .page-h p{margin:0;color:var(--muted);font-size:.9rem;flex-basis:100%}
 
+.mbar{display:none}
+.navscrim{display:none}
 @media (max-width:860px){
-  body{overflow:auto}
-  .app,.app.collapsed{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);height:auto;min-height:100%}
-  .side{flex-direction:row;align-items:center;padding:8px max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));overflow-x:auto;overflow-y:hidden;gap:8px}
-  .brand{border:0;margin:0;padding:0}
-  .brand div{display:none}
-  .nav{flex-direction:row}
-  .nav a{padding:8px 10px}
-  .nav a span{display:none}
-  .app.collapsed .nav a span{display:none}
-  .side-note,#btn-full,#btn-collapse{display:none}
-  .side-foot{flex-direction:row;align-items:center;margin:0 0 0 auto;padding:0;border:0;gap:2px}
-  .side-foot button span,.side-foot .live span{display:none}
-  .side-foot button{padding:8px}
-  .main{overflow:visible}
-  .view{overflow:visible}
-  .view.board-view{overflow:visible;height:calc(100dvh - 58px)}
+  .app,.app.collapsed{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  .side{position:fixed;top:0;bottom:0;left:0;width:min(300px,86vw);z-index:70;transform:translateX(-105%);transition:transform .22s ease;box-shadow:none;
+    padding:max(14px,env(safe-area-inset-top,0px)) 12px max(16px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));visibility:hidden}
+  .app.navopen .side{transform:none;visibility:visible;box-shadow:8px 0 30px rgba(0,0,0,.3)}
+  .app.collapsed .brand div,.app.collapsed .nav a span,.app.collapsed .side-foot button span,.app.collapsed .side-note,.app.collapsed .live span{display:revert}
+  .app.collapsed .nav a{justify-content:flex-start}.app.collapsed .side-foot button{justify-content:flex-start}
+  .app.collapsed .nav .badge{position:static;transform:none;margin-left:auto;font-size:.7rem;padding:0 7px}
+  .nav a{padding:12px 12px;font-size:1rem}
+  .nav a svg{width:21px;height:21px}
+  #btn-full,#btn-collapse{display:none!important}
+  .side-foot button{padding:11px 12px;font-size:.95rem}
+  .navscrim{display:block;position:fixed;inset:0;background:var(--scrim);z-index:69;opacity:0;pointer-events:none;transition:opacity .2s}
+  .app.navopen .navscrim{opacity:1;pointer-events:auto}
+  .mbar{display:flex;align-items:center;gap:8px;background:var(--side-bg);color:var(--side-fg);min-height:54px;flex:none;
+    padding:6px max(10px,env(safe-area-inset-right,0px)) 6px max(6px,env(safe-area-inset-left,0px))}
+  .mbar .hb{position:relative;width:44px;height:44px;border:0;background:none;color:inherit;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+  .mbar .hb:hover,.mbar .hb:focus-visible{background:var(--side-active)}
+  .mbar .hb svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+  .mbar .hb i{position:absolute;top:6px;right:5px;min-width:17px;height:17px;border-radius:9px;background:var(--bad);color:#fff;font-style:normal;font-size:.66rem;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 4px;font-variant-numeric:tabular-nums}
+  .mbar .ml{width:30px;height:30px;flex:none}
+  .mbar .mt{display:flex;flex-direction:column;min-width:0;line-height:1.15;flex:1}
+  .mbar .mt b{font-family:var(--f-display);font-weight:800;font-size:1.02rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mbar .mt small{color:var(--side-muted);font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mbar .live{padding:0;margin:0}
+  .mbar .live span{display:none}
+  .main{overflow:hidden}
+  .view{padding-block:12px 32px}
+  .view.board-view{padding-block:10px max(10px,env(safe-area-inset-bottom,0px))}
+  .view .toolbar>h1{display:none}
+  .page-h h1{font-size:1.3rem}
+  .view .toolbar{gap:6px 8px}
+  .view .toolbar .search{flex:1 1 100%;max-width:none}
+  .view .toolbar select.inp{flex:1 1 calc(50% - 4px);min-width:0;width:auto}
+  .view .qchips{flex-wrap:nowrap;overflow-x:auto;width:100%;max-width:100%;padding-bottom:2px;scrollbar-width:none;margin-inline:-2px}
+  .view .qchips::-webkit-scrollbar{display:none}
+  .view .qchip{flex:none}
+  .view .toolbar .sp{display:none}
+  .view .toolbar>.btn{flex:1 1 auto}
+  .dr-h{padding:12px 14px}
+  .dr-b{padding:14px 14px 20px}
+  .dr-f{padding:10px 14px max(10px,env(safe-area-inset-bottom,0px))}
+  .dr-actions{padding:8px 14px;overflow-x:auto;flex-wrap:nowrap}
+  .dr-actions .btn{flex:none}
+  .smsbar{left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));max-width:none}
 }
 
 /* ---------- controls ---------- */
@@ -513,7 +543,7 @@ td.nw{white-space:nowrap}
 </head>
 <body>
 <div class="app" id="app">
-  <aside class="side">
+  <aside class="side" id="side">
     <div class="brand">
       <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#14514C"/><path d="M32 8.6 L50.6 14.8 V30 C50.6 42.1 42.8 50.6 32 55.3 C21.2 50.6 13.4 42.1 13.4 30 V14.8 Z" fill="none" stroke="#E2B650" stroke-width="2"/><path d="M24.5 18.5 H39.5 V24.5 C39.5 29.6 36.2 33 32 33 C27.8 33 24.5 29.6 24.5 24.5 Z" fill="#E2B650"/><path d="M24.5 20.5 H20.8 C20.8 25.2 22.6 27.4 25.6 27.9 M39.5 20.5 H43.2 C43.2 25.2 41.4 27.4 38.4 27.9" fill="none" stroke="#E2B650" stroke-width="2.4" stroke-linecap="round"/><rect x="30.4" y="32.6" width="3.2" height="5.4" fill="#E2B650"/><rect x="26" y="38" width="12" height="3.6" rx="1.2" fill="#E2B650"/><path d="M32 21.2 L33.15 23.55 L35.7 23.9 L33.85 25.7 L34.3 28.25 L32 27.05 L29.7 28.25 L30.15 25.7 L28.3 23.9 L30.85 23.55 Z" fill="#14514C"/><path d="M22 46 C25 48.8 28.4 50.4 32 51.2 C35.6 50.4 39 48.8 42 46" fill="none" stroke="#E2B650" stroke-width="2" stroke-linecap="round"/></svg>
       <div><b>Ümraniye Şampiyonları</b><small>Servis · Sevkiyat · Talep</small></div>
@@ -539,7 +569,14 @@ td.nw{white-space:nowrap}
     </div>
   </aside>
 
+  <div class="navscrim" id="navscrim"></div>
   <div class="main">
+    <header class="mbar" id="mbar">
+      <button class="hb" type="button" id="btn-menu" aria-label="Menüyü aç" aria-expanded="false" aria-controls="side"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><i id="mb-badge" hidden></i></button>
+      <img class="ml" src="/icon.svg" alt="">
+      <div class="mt"><b id="mb-title">Pano</b><small>Ümraniye Şampiyonları</small></div>
+      <p class="live" id="mb-live" data-state="wait"><i></i><span></span></p>
+    </header>
     <div id="banner" class="banner" hidden style="margin:12px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))"></div>
     <section class="view board-view" id="view-pano"></section>
     <section class="view board-view req-view" id="view-talepler" hidden></section>
@@ -1009,6 +1046,7 @@ function render(){
   else (same?preserve($('view-tanimlar'),renderDefs):renderDefs());
   renderLists();
   $('side-note').textContent=S.db?(S.canWrite?'Değişiklikler anında herkese yansır.':'Görüntüleme modundasınız.'):'';
+  mbarUpdate();
 }
 function preserve(el,fn){const vals={};el.querySelectorAll('input[id],textarea[id],select[id]').forEach(x=>{if(x.type==='file')return;vals[x.id]=(x.type==='checkbox'||x.type==='radio')?x.checked:x.value});
   const a=document.activeElement;const aid=a&&el.contains(a)?a.id:null;let sel=null;try{sel=aid&&a.selectionStart!=null?[a.selectionStart,a.selectionEnd]:null}catch(_){}
@@ -2372,6 +2410,22 @@ document.addEventListener('change',async e=>{if(e.target.id!=='bk-file')return;c
   try{const j=JSON.parse(await f.text());if(!j||!j.data)throw 0;bkData=j;const c=Object.entries(j.data).map(([k,v])=>Array.isArray(v)?v.length:0).reduce((a,b)=>a+b,0);
     $('bk-confirm').innerHTML=`<div class="note-box warn">${esc(f.name)} · ${esc((j.createdAt||'').slice(0,10))} tarihli yedek, toplam ${c} kayıt (${(j.data.tickets||[]).length} arıza kaydı, ${(j.data.requests||[]).length} talep).<div style="margin-top:8px"><button class="btn small danger" type="button" data-act="bk-restore">Geri yükle</button></div></div>`}
   catch(_){toast('Bu dosya geçerli bir yedek değil');bkData=null}});
+
+/* ================= mobil menü ================= */
+const VIEW_TITLE={pano:'Pano',talepler:'Ürün Talepleri',sevkiyat:'Sevkiyatlar',duyurular:'Duyurular',takvim:'Tarihe Göre',musteriler:'Müşteriler',raporlar:'Raporlar',tanimlar:'Tanımlar ve Ayarlar'};
+function setNav(open){$('app').classList.toggle('navopen',open);$('btn-menu').setAttribute('aria-expanded',String(open));$('btn-menu').setAttribute('aria-label',open?'Menüyü kapat':'Menüyü aç');
+  if(open){const a=document.querySelector('.nav a[aria-current="page"]')||document.querySelector('.nav a:not([hidden])');if(a)setTimeout(()=>a.focus(),50)}}
+$('btn-menu').onclick=()=>setNav(!$('app').classList.contains('navopen'));
+$('navscrim').onclick=()=>setNav(false);
+document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>setNav(false)));
+['btn-pw','btn-install'].forEach(id=>$(id).addEventListener('click',()=>setNav(false)));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('app').classList.contains('navopen'))setNav(false)});
+{let x0=null;$('side').addEventListener('touchstart',e=>{x0=e.touches[0].clientX},{passive:true});$('side').addEventListener('touchend',e=>{if(x0!=null&&e.changedTouches[0].clientX-x0<-60)setNav(false);x0=null},{passive:true})}
+function mbarUpdate(){$('mb-title').textContent=VIEW_TITLE[S.view]||'';
+  const n=['nb-late','nb-req','nb-ann'].map(id=>$(id)).filter(e=>!e.hidden&&!(e.closest('a')&&e.closest('a').hidden)).reduce((t,e)=>t+(Number(e.textContent)||0),0);
+  $('mb-badge').hidden=!n;$('mb-badge').textContent=n>99?'99+':n;
+  const lv=$('live');if(lv)$('mb-live').dataset.state=lv.dataset.state}
+new MutationObserver(()=>{$('mb-live').dataset.state=$('live').dataset.state}).observe($('live'),{attributes:true,attributeFilter:['data-state']});
 
 /* ================= boot ================= */
 route();
