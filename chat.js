@@ -30,6 +30,7 @@ module.exports = function setup(ctx) {
       CREATE TABLE IF NOT EXISTS game_scores (
         id BIGSERIAL PRIMARY KEY, game TEXT NOT NULL, user_id TEXT NOT NULL, score INTEGER NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
       CREATE INDEX IF NOT EXISTS game_scores_g ON game_scores (game, score DESC);
+      CREATE TABLE IF NOT EXISTS chat_prefs (user_id TEXT NOT NULL, channel TEXT NOT NULL, mode TEXT NOT NULL, PRIMARY KEY (user_id, channel));
     `);
     const n = await pool.query('SELECT count(*)::int AS n FROM chat_channels');
     if (n.rows[0].n === 0) {
@@ -83,7 +84,7 @@ module.exports = function setup(ctx) {
     const m = rooms.get(room); if (!m || !m.has(cid)) return;
     m.delete(cid);
     for (const p of m.values()) sendToCid(p.cid, { type: 'peer-left', room, cid });
-    if (!m.size) { rooms.delete(room); if (room.startsWith('call_')) callInvites.delete(room); }
+    if (!m.size) { rooms.delete(room); if (room.startsWith('call_')) { const inv = callInvites.get(room); if (inv && !inv.answered && !inv.ended) { endInvite(room); missedPush(inv, room); insertMsg(dmId(inv.from, inv.to), inv.from, inv.video ? 'Cevapsız görüntülü arama' : 'Cevapsız arama', { kind: 'call', meta: { reason: 'missed', video: inv.video } }).catch(() => {}); } callInvites.delete(room); } }
   }
   function leaveAll(cid) { let any = false; for (const [room, m] of [...rooms]) if (m.has(cid)) { leaveRoom(room, cid); any = true; } if (any) voiceChanged(); }
 
@@ -139,7 +140,9 @@ module.exports = function setup(ctx) {
       unread: Object.fromEntries(unread.rows.map(r => [r.channel, r.n])),
       last: Object.fromEntries(last.rows.map(r => [r.channel, { at: r.created_at, text: String(r.text || '').slice(0, 90), kind: r.kind, uid: r.user_id, name: r.uname }])),
       reads: Object.fromEntries(reads.rows.map(r => [r.channel, r.read_at])),
-      ice: iceServers(),
+      ice: await iceServers(),
+      prefs: Object.fromEntries((await pool.query('SELECT channel, mode FROM chat_prefs WHERE user_id = $1', [u.id])).rows.map(r => [r.channel, r.mode])),
+      pushDevices: (await pool.query('SELECT count(*)::int AS n FROM push_subs WHERE user_id = $1', [u.id])).rows[0].n,
     });
   }));
   app.get('/api/chat/messages', wrap(auth), wrap(async (req, res) => {
@@ -172,16 +175,22 @@ module.exports = function setup(ctx) {
     const msg = await insertMsg(ch, u.id, text, { replyTo, files });
     await pool.query('INSERT INTO chat_reads (user_id, channel, read_at) VALUES ($1,$2, now()) ON CONFLICT (user_id, channel) DO UPDATE SET read_at = now()', [u.id, ch]);
     res.json(msg);
-    // bildirimler: özel mesaj ve @bahsetme
-    const targets = new Set();
-    if (ch.startsWith('dm_')) dmPeers(ch).filter(x => x !== u.id).forEach(x => targets.add(x));
-    if (text.includes('@')) {
-      const low = lower(text);
-      for (const x of await activeUsers()) { const n = lower(x.name); const f = n.split(' ')[0]; if (x.id !== u.id && (low.includes('@' + n) || (f.length > 2 && low.includes('@' + f))) && canAccess(x, ch)) targets.add(x.id); }
+    // bildirimler: özel mesaj, @bahsetme, yanıt ve "tüm mesajlar" tercihi (kanallarda varsayılan)
+    const prefs = new Map((await pool.query('SELECT user_id, mode FROM chat_prefs WHERE channel = $1', [ch])).rows.map(r => [r.user_id, r.mode]));
+    const users = await activeUsers();
+    const low = lower(text); const everyone = low.includes('@herkes') && STAFF.has(u.role);
+    const mentioned = x => { const n = lower(x.name); const f = n.split(' ')[0]; return low.includes('@' + n) || (f.length > 2 && new RegExp('@' + f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-zçğıöşü])').test(low)); };
+    let replyUid = null;
+    if (replyTo) { const r = await pool.query('SELECT user_id FROM chat_messages WHERE id = $1', [replyTo]); replyUid = r.rows[0] && r.rows[0].user_id; }
+    const preview = text.replace(/[*`~]/g, '') || (files.length ? '📎 ' + files[0].name : '');
+    for (const x of users) {
+      if (x.id === u.id || !canAccess(x, ch)) continue;
+      const mode = prefs.get(x.id) || 'all';
+      if (mode === 'none') continue;
+      const direct = ch.startsWith('dm_') || mentioned(x) || x.id === replyUid || everyone;
+      if (mode === 'mentions' && !direct) continue;
+      pushUser(x.id, { kind: 'chat', title: ch.startsWith('dm_') ? u.name : `${u.name} · ${chLabel(ch)}`, body: preview.slice(0, 140), url: chUrl(req, ch), tag: 'chat-' + ch, ch }, { urgency: 'high', ttl: 86400 });
     }
-    if (replyTo) { const r = await pool.query('SELECT user_id FROM chat_messages WHERE id = $1', [replyTo]); if (r.rows[0] && r.rows[0].user_id !== u.id) targets.add(r.rows[0].user_id); }
-    const preview = text || (files.length ? '📎 ' + files[0].name : '');
-    for (const t of targets) pushUser(t, { title: ch.startsWith('dm_') ? u.name : `${u.name} · ${chLabel(ch)}`, body: preview.slice(0, 140), url: chUrl(req, ch), tag: 'chat-' + ch });
   }));
   app.patch('/api/chat/messages/:id', json, wrap(auth), wrap(async (req, res) => {
     const m = (await pool.query('SELECT * FROM chat_messages WHERE id = $1', [req.params.id])).rows[0];
@@ -217,6 +226,12 @@ module.exports = function setup(ctx) {
     const ch = String((req.body || {}).ch || '');
     if (!canAccess(req.user, ch)) return res.status(403).json({ error: 'Erişim yok' });
     await pool.query('INSERT INTO chat_reads (user_id, channel, read_at) VALUES ($1,$2, now()) ON CONFLICT (user_id, channel) DO UPDATE SET read_at = now()', [req.user.id, ch]);
+    res.json({ ok: true });
+  }));
+  app.post('/api/chat/prefs', json, wrap(auth), wrap(async (req, res) => {
+    const { ch, mode } = req.body || {};
+    if (!canAccess(req.user, ch) || !['all', 'mentions', 'none'].includes(mode)) return res.status(400).json({ error: 'Geçersiz ayar' });
+    await pool.query('INSERT INTO chat_prefs (user_id, channel, mode) VALUES ($1,$2,$3) ON CONFLICT (user_id, channel) DO UPDATE SET mode = EXCLUDED.mode', [req.user.id, ch, mode]);
     res.json({ ok: true });
   }));
   app.post('/api/chat/typing', json, wrap(auth), (req, res) => {
@@ -258,15 +273,29 @@ module.exports = function setup(ctx) {
   }));
 
   /* ---------------- sesli / görüntülü arama ---------------- */
-  function iceServers() {
-    const list = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  /* TURN: farklı mobil şebekelerdeki telefonların birbirine bağlanabilmesi için aracı sunucu.
+     Cloudflare (CF_TURN_KEY_ID + CF_TURN_API_TOKEN), Metered (METERED_TURN_URL) veya sabit TURN_URLS desteklenir. */
+  let iceCache = { at: 0, list: null };
+  async function iceServers() {
+    const base = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
     const urls = String(process.env.TURN_URLS || '').split(',').map(s => s.trim()).filter(Boolean);
-    if (urls.length) list.push({ urls, username: process.env.TURN_USERNAME || '', credential: process.env.TURN_CREDENTIAL || '' });
-    return list;
+    if (urls.length) base.push({ urls, username: process.env.TURN_USERNAME || '', credential: process.env.TURN_CREDENTIAL || '' });
+    const cfId = process.env.CF_TURN_KEY_ID, cfTok = process.env.CF_TURN_API_TOKEN, met = process.env.METERED_TURN_URL;
+    if (!cfId && !met) return base;
+    if (iceCache.list && Date.now() - iceCache.at < 6 * 3600e3) return [...base, ...iceCache.list];
+    try {
+      let extra = [];
+      if (cfId && cfTok) {
+        const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(cfId)}/credentials/generate`, { method: 'POST', headers: { Authorization: `Bearer ${cfTok}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl: 86400 }) });
+        const d = await r.json(); const s = d.iceServers; extra = Array.isArray(s) ? s : s ? [s] : [];
+      } else if (met) { const r = await fetch(met); const d = await r.json(); extra = Array.isArray(d) ? d : (d.iceServers || []); }
+      if (extra.length) iceCache = { at: Date.now(), list: extra };
+      return [...base, ...extra];
+    } catch (e) { console.warn('TURN bilgisi alınamadı', e.message); return [...base, ...(iceCache.list || [])]; }
   }
   const clientOf = (req, cid) => { for (const c of clients) if (c.cid === cid && c.user.id === req.user.id) return c; return null; };
   function voiceRoomOk(user, room) { if (room.startsWith('call_')) return canAccess(user, room); const c = chans.get(room); return !!c && c.kind === 'voice' && audienceOk(user, c.audience); }
-  app.post('/api/call/join', json, wrap(auth), (req, res) => {
+  app.post('/api/call/join', json, wrap(auth), wrap(async (req, res) => {
     const { room, cid } = req.body || {};
     if (typeof room !== 'string' || !voiceRoomOk(req.user, room)) return res.status(403).json({ error: 'Bu odaya giremezsiniz' });
     if (!clientOf(req, cid)) return res.status(400).json({ error: 'Bağlantı bulunamadı, sayfayı yenileyin' });
@@ -276,8 +305,8 @@ module.exports = function setup(ctx) {
     const peers = [...m.values()].filter(p => p.cid !== cid);
     m.set(cid, { cid, uid: req.user.id, name: req.user.name, muted: !!req.body.muted, video: !!req.body.video, screen: false, at: Date.now() });
     voiceChanged();
-    res.json({ peers, ice: iceServers() });
-  });
+    res.json({ peers, ice: await iceServers() });
+  }));
   app.post('/api/call/leave', json, wrap(auth), (req, res) => {
     const { room, cid } = req.body || {};
     if (clientOf(req, cid)) { if (room) leaveRoom(room, cid); else for (const r of [...rooms.keys()]) leaveRoom(r, cid); voiceChanged(); }
@@ -303,28 +332,41 @@ module.exports = function setup(ctx) {
     const t = (await pool.query("SELECT id, name, role, branch FROM users WHERE id = $1 AND status = 'active'", [to])).rows[0];
     if (!t) return res.status(404).json({ error: 'Kişi bulunamadı' });
     const room = 'call_' + newId(12); const video = !!req.body.video;
-    callInvites.set(room, { from: req.user.id, fromName: req.user.name, to, toName: t.name, video, at: Date.now() });
+    callInvites.set(room, { from: req.user.id, fromName: req.user.name, to, toName: t.name, video, at: Date.now(), base: baseUrl(req), n: 0 });
     sendToUser(to, { type: 'ring', room, from: { id: req.user.id, name: req.user.name }, video });
-    pushUser(to, { title: `${req.user.name} sizi arıyor`, body: video ? 'Görüntülü arama · açmak için dokunun' : 'Sesli arama · açmak için dokunun', url: `${baseUrl(req)}/?call=${room}#sohbet`, tag: 'call-' + room });
+    const devices = await ringPush(room);
     const online = [...clients].some(c => c.user.id === to);
-    res.json({ room, online });
+    res.json({ room, online, devices });
   }));
+  /* zil: telefon kilitliyken de çalsın diye 7 saniyede bir yeniden bildirim (en fazla ~40 sn) */
+  async function ringPush(room) {
+    const inv = callInvites.get(room); if (!inv || inv.answered || inv.ended) return 0;
+    inv.n++;
+    const n = await pushUser(inv.to, { kind: 'call', title: `${inv.fromName} sizi arıyor`, body: (inv.video ? 'Görüntülü arama' : 'Sesli arama') + ' · Cevaplamak için dokunun', url: `${inv.base}/?call=${room}#sohbet`, answerUrl: `${inv.base}/?call=${room}&answer=1#sohbet`, room, tag: 'call-' + room, video: inv.video }, { urgency: 'high', ttl: 40 });
+    clearTimeout(inv.pushT);
+    if (inv.n < 6) inv.pushT = setTimeout(() => { const i = callInvites.get(room); if (i && rooms.get(room) && rooms.get(room).size) ringPush(room); }, 7000);
+    return n;
+  }
+  function missedPush(inv, room) { pushUser(inv.to, { kind: 'call-missed', title: `${inv.fromName} sizi aradı`, body: inv.video ? 'Cevapsız görüntülü arama' : 'Cevapsız arama', url: `${inv.base}/?ch=${dmId(inv.from, inv.to)}#sohbet`, tag: 'call-' + room }, { urgency: 'high', ttl: 86400 }); }
+  function endInvite(room) { const inv = callInvites.get(room); if (inv) { inv.ended = true; clearTimeout(inv.pushT); } return inv; }
   app.post('/api/call/ring/end', json, wrap(auth), wrap(async (req, res) => {
     const { room, reason } = req.body || {};
     const inv = callInvites.get(room);
     if (!inv || (inv.from !== req.user.id && inv.to !== req.user.id)) return res.json({ ok: true });
     const r = ['declined', 'cancelled', 'missed', 'busy'].includes(reason) ? reason : 'cancelled';
+    const wasOpen = !inv.answered && !inv.ended; endInvite(room);
     for (const uid of [inv.from, inv.to]) sendToUser(uid, { type: 'ring-end', room, reason: r, by: req.user.id });
+    if (wasOpen && (r === 'cancelled' || r === 'missed') && req.user.id === inv.from) missedPush(inv, room);
     if (r === 'missed' || r === 'declined') {
       await insertMsg(dmId(inv.from, inv.to), inv.from, r === 'missed' ? (inv.video ? 'Cevapsız görüntülü arama' : 'Cevapsız arama') : 'Arama reddedildi', { kind: 'call', meta: { reason: r, video: inv.video } }).catch(() => {});
-      if (r === 'missed') pushUser(inv.to, { title: `${inv.fromName} sizi aradı`, body: 'Cevapsız arama', url: `${baseUrl(req)}/?ch=${dmId(inv.from, inv.to)}#sohbet`, tag: 'call-' + room });
     }
     const m = rooms.get(room); if (!m || !m.size) callInvites.delete(room);
     res.json({ ok: true });
   }));
   app.post('/api/call/accepted', json, wrap(auth), wrap(async (req, res) => {
     const inv = callInvites.get((req.body || {}).room);
-    if (!inv || inv.to !== req.user.id) return res.status(404).json({ error: 'Arama sona erdi' });
+    if (!inv || inv.to !== req.user.id || inv.ended) return res.status(404).json({ error: 'Arama sona erdi' });
+    inv.answered = true; clearTimeout(inv.pushT);
     sendToUser(inv.to, { type: 'ring-end', room: req.body.room, reason: 'answered', by: req.user.id });
     if (!inv.logged) { inv.logged = true; await insertMsg(dmId(inv.from, inv.to), inv.from, inv.video ? 'Görüntülü arama' : 'Sesli arama', { kind: 'call', meta: { reason: 'answered', video: inv.video } }).catch(() => {}); }
     res.json({ ok: true });
@@ -372,7 +414,7 @@ module.exports = function setup(ctx) {
     const g = { id, kind, players: [{ id: req.user.id, name: req.user.name, mark: 'X' }, { id: t.id, name: t.name, mark: 'O' }], state: { board: Array(GAMES2[kind].cells).fill(null), turn: 'X', last: null }, status: 'invite', winner: null };
     await pool.query('INSERT INTO games (id, kind, players, state, status) VALUES ($1,$2,$3,$4,$5)', [id, kind, JSON.stringify(g.players), JSON.stringify(g.state), g.status]);
     g.updated_at = nowIso(); g.created_at = g.updated_at; sendGame(g);
-    pushUser(t.id, { title: `${req.user.name} sizi ${GAMES2[kind].name} oynamaya çağırıyor`, body: 'Kabul etmek için dokunun', url: `${baseUrl(req)}/#oyunlar`, tag: 'game-' + id });
+    pushUser(t.id, { kind: 'game', title: `${req.user.name} sizi ${GAMES2[kind].name} oynamaya çağırıyor`, body: 'Kabul etmek için dokunun', url: `${baseUrl(req)}/#oyunlar`, tag: 'game-' + id });
     res.json(gameOut(g));
   }));
   app.post('/api/games/:id/:act', json, wrap(auth), wrap(gamesOn), wrap(async (req, res) => {

@@ -41,7 +41,9 @@ const MAIL_FROM = process.env.MAIL_FROM || 'onboarding@messagebird.dev';
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || APP_NAME;
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC || '';
 const pushReady = !!(webpush && VAPID_PUBLIC && process.env.VAPID_PRIVATE);
-if (pushReady) webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@example.com', VAPID_PUBLIC, process.env.VAPID_PRIVATE);
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || APP_URL_RAW() || 'mailto:admin@example.com';
+function APP_URL_RAW() { const u = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, ''); return /^https:\/\//.test(u) ? u : ''; }
+if (pushReady) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, process.env.VAPID_PRIVATE);
 
 const COLLS = new Set(['tickets', 'firms', 'customers', 'categories', 'products', 'settings', 'requests', 'branches', 'shipments', 'announcements']);
 const STAFF_ROLES = new Set(['admin', 'user']);
@@ -250,18 +252,24 @@ function broadcast(evt) {
 setInterval(() => { for (const c of clients) { try { c.res.write(': ping\n\n'); } catch { clients.delete(c); } } }, 25000);
 
 /* ---------------- telefon bildirimi (web push) ---------------- */
-async function pushTo(filterSql, params, payload) {
-  if (!pushReady) return;
+/* urgency 'high': Android/iOS telefon kilitliyken de bildirimi bekletmeden iletir */
+async function pushTo(filterSql, params, payload, opts = {}) {
+  if (!pushReady) return 0;
+  let sent = 0;
   try {
     const { rows } = await pool.query(`SELECT p.endpoint, p.data FROM push_subs p JOIN users u ON u.id = p.user_id WHERE u.status = 'active' AND ${filterSql}`, params);
     await Promise.all(rows.map(async r => {
-      try { await webpush.sendNotification(r.data, JSON.stringify(payload), { TTL: 3600 }); }
-      catch (e) { if (e.statusCode === 404 || e.statusCode === 410) await pool.query('DELETE FROM push_subs WHERE endpoint=$1', [r.endpoint]); }
+      try { await webpush.sendNotification(r.data, JSON.stringify(payload), { TTL: opts.ttl ?? 6 * 3600, urgency: opts.urgency || 'high' }); sent++; }
+      catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) await pool.query('DELETE FROM push_subs WHERE endpoint=$1', [r.endpoint]);
+        else console.warn('Bildirim iletilemedi', e.statusCode || '', (String(r.endpoint).split('/')[2] || ''), String(e.body || e.message || '').slice(0, 160));
+      }
     }));
   } catch (e) { console.warn('Bildirim hatası', e.message); }
+  return sent;
 }
-const pushStaff = (payload, exceptId) => pushTo("u.role IN ('admin','user') AND u.id <> $1", [exceptId || ''], payload);
-const pushUser = (userId, payload) => pushTo('u.id = $1', [userId], payload);
+const pushStaff = (payload, exceptId, opts) => pushTo("u.role IN ('admin','user') AND u.id <> $1", [exceptId || ''], payload, opts);
+const pushUser = (userId, payload, opts) => pushTo('u.id = $1', [userId], payload, opts);
 
 /* ---------------- talep olayları ---------------- */
 async function onRequestChange(oldDoc, doc, actor, req) {
@@ -337,7 +345,7 @@ async function maybeDailyReport(force) {
     const exch = tickets.filter(t => ['degisim', 'iade'].includes(t.serviceResult) && t.exchange && !t.exchange.doneAt && !['kapandi'].includes(t.status));
     if (!force) {
       const parts = [late.length && `${late.length} gecikmiş`, waiting.length && `${waiting.length} mağazada bekleyen`, notify.length && `${notify.length} müşteriye haber verilecek`, longSvc.length && `${longSvc.length} serviste uzun kalan`, loans.length && `${loans.length} ödünç ürün dışarıda`, newReq.length && `${newReq.length} yeni talep`].filter(Boolean);
-      if (parts.length) pushStaff({ title: 'Günaydın · bugünün hatırlatmaları', body: parts.join(' · '), url: (APP_URL || '') + '/#pano', tag: 'daily' });
+      if (parts.length) pushStaff({ title: 'Günaydın · bugünün hatırlatmaları', body: parts.join(' · '), url: (APP_URL || '') + '/#pano', tag: 'daily' }, '', { urgency: 'normal', ttl: 6 * 3600 });
     }
     if (!to) return { ok: false, reason: 'no_recipient' };
     const tbl = (title, list, color) => list.length ? `<h3 style="font-size:15px;margin:18px 0 6px;color:${color || '#15201E'}">${esc(title)} (${list.length})</h3><table style="border-collapse:collapse;width:100%;font-size:13px">${list.map(t => `<tr><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8;font-family:monospace">${esc(t.no)}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8">${esc(t.customerName || t.requesterName || '')}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8">${esc(t.productName || '')}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8">${esc(t.firmName || t.fromBranch || '')}</td><td style="padding:5px 6px;border-bottom:1px solid #E3EAE8;white-space:nowrap">${esc(trDate(t.dueAt || t.createdAt))}</td></tr>`).join('')}</table>` : '';
@@ -976,8 +984,8 @@ app.post('/api/push/unsubscribe', express.json({ limit: '10kb' }), wrap(auth), w
   res.json({ ok: true });
 }));
 app.post('/api/push/test', wrap(auth), wrap(async (req, res) => {
-  await pushUser(req.user.id, { title: APP_NAME, body: 'Bildirimler bu cihazda çalışıyor.', url: baseUrl(req) + '/' });
-  res.json({ ok: true });
+  const n = await pushUser(req.user.id, { title: APP_NAME, body: 'Bildirimler bu cihazda çalışıyor.', url: baseUrl(req) + '/', tag: 'test' });
+  res.json({ ok: true, sent: n });
 }));
 
 /* rapor (yönetici) */
@@ -1097,6 +1105,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Sunucu hatası' });
 });
 
+setInterval(() => maybeDailyReport(false), 5 * 60e3);
 migrate().then(() => {
   app.listen(PORT, () => console.log(`${APP_NAME} çalışıyor, port ${PORT} · e-posta: ${mailEnabled() ? 'açık' : 'kapalı'} · bildirim: ${pushReady ? 'açık' : 'kapalı'}`));
 }).catch(e => { console.error('Veritabanı hazırlanamadı:', e); process.exit(1); });
