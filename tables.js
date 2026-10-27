@@ -62,7 +62,7 @@ module.exports = function setupTables(ctx) {
     if (t.status !== 'playing' || !t.game) return;
     const E = ENGINES[t.kind];
     if (E.isOver(t)) return finish(t);
-    if (E.between && E.between(t)) { t.timer = setTimeout(() => { E.nextHand(t); afterChange(t); }, 4500); return; }
+    if (E.between && E.between(t)) { t.timer = setTimeout(() => { E.nextHand(t); afterChange(t); }, E.betweenMs || 4500); return; }
     const seat = E.turnSeat(t); if (seat == null) return;
     const s = t.seats[seat];
     if (isBot(s) || (s && s.away)) { t.timer = setTimeout(() => botMove(t, seat), E.botDelay ? E.botDelay(t) : 1100 + Math.random() * 900); return; }
@@ -74,7 +74,7 @@ module.exports = function setupTables(ctx) {
     const E = ENGINES[t.kind]; if (E.turnSeat(t) !== seat) return schedule(t);
     let guard = 0;
     while (E.turnSeat(t) === seat && guard++ < 30 && t.status === 'playing') {
-      const a = E.bot(t, seat); if (!a) break;
+      const a = E.bot(t, seat, { human: !isBot(t.seats[seat]) }); if (!a) break;
       const r = E.act(t, seat, a); if (r && r.error) { console.warn('Bot hamlesi reddedildi', t.kind, a.type, r.error); const f = E.fallback && E.fallback(t, seat); if (!f) break; const r2 = E.act(t, seat, f); if (r2 && r2.error) break; }
       if (E.stepwise) break;
     }
@@ -274,5 +274,7 @@ module.exports = function setupTables(ctx) {
 
   /* dış motorları kaydet (okey, tavla) */
   function register(kind, engine) { ENGINES[kind] = engine; }
+  register('okey101', require('./okey')({ shuffle, now }));
+  register('tavla', require('./tavla')({ shuffle, now }));
   return { ENGINES, register, restore, lobby, TABLES, helpers: { shuffle, now } };
 };

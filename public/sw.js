@@ -1,7 +1,7 @@
 /* Ümraniye Şampiyonları — servis çalışanı: uygulama kabuğu ve telefon bildirimleri */
-const CACHE = 'us-v7';
+const CACHE = 'us-v8';
 const APP = 'Ümraniye Şampiyonları';
-const SHELL = ['/', '/icon.svg', '/icon-192.png', '/manifest.webmanifest', '/vendor/qrcode.js'];
+const SHELL = ['/', '/icon.svg', '/icon-192.png', '/manifest.webmanifest', '/vendor/qrcode.js', '/okey-core.js'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting()));
