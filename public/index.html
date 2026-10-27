@@ -3,9 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Servis Takip Panosu</title>
-<meta name="description" content="Arıza kayıtları ve fatura takibi">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 34 34%22%3E%3Crect width=%2234%22 height=%2234%22 rx=%229%22 fill=%22%230D6B68%22/%3E%3Cpath d=%22M21.6 9.4a5 5 0 0 0-6.2 6.3l-6 6a1.7 1.7 0 0 0 2.4 2.4l6-6a5 5 0 0 0 6.3-6.2l-2.8 2.8-2.4-.6-.6-2.4z%22 fill=%22white%22/%3E%3C/svg%3E">
+<title>Ümraniye Şampiyonları</title>
+<meta name="description" content="Servis takibi, sevkiyat ve şubeler arası ürün talepleri">
+<meta name="theme-color" content="#0F2E2C">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ümraniye Ş.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
@@ -367,6 +373,115 @@ td.nw{white-space:nowrap}
 .smsbar{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,calc(env(safe-area-inset-bottom,0px) + 12px));z-index:85;max-width:min(460px,calc(100% - 32px));background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
 .smsbar-t{flex:1 1 100%;font-size:.86rem;display:flex;flex-direction:column;gap:3px;min-width:0}
 .smsbar-t span{color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.badge.gold{background:#C9962B !important}
+.login{align-items:center}
+.login-wrap{width:100%;max-width:880px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);gap:28px;align-items:center}
+.login-hero{color:var(--fg);display:flex;flex-direction:column;gap:10px}
+.login-hero .hero-logo{width:92px;height:92px;border-radius:22px;box-shadow:0 12px 30px rgba(15,46,44,.25)}
+.login-hero h1{font-family:var(--f-display);font-weight:800;font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.05;margin:8px 0 0;letter-spacing:-.02em}
+.login-hero p{margin:0;color:var(--muted);max-width:34ch;font-size:1.02rem}
+@media (max-width:760px){.login-wrap{grid-template-columns:minmax(0,1fr);gap:16px}.login-hero{align-items:center;text-align:center}.login-hero .hero-logo{width:64px;height:64px}.login-hero p{display:none}}
+.ltabs{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border:1px solid var(--line-2);border-radius:10px;padding:3px;gap:3px}
+.ltabs button{border:0;background:none;border-radius:8px;padding:8px;font-weight:700;color:var(--muted);cursor:pointer}
+.ltabs button[aria-pressed="true"]{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+.lmode{display:flex;flex-direction:column;gap:12px}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:600;cursor:pointer;padding:2px;align-self:center}
+.lnote{font-size:.9rem;font-weight:600;color:var(--bad)}
+.lnote.ok{color:var(--ok)}
+.lnote:empty{display:none}
+.lnote button{margin-top:8px}
+.dr-actions{display:flex;flex-wrap:wrap;gap:6px;padding:10px 18px;border-bottom:1px solid var(--line-2);background:var(--surface-2)}
+.sig-canvas{width:100%;aspect-ratio:1000/360;max-width:100%;background:#fff;border:1.5px dashed var(--line);border-radius:10px;touch-action:none;cursor:crosshair}
+#print-area{display:none}
+@media print{
+  html,body{height:auto!important;overflow:visible!important;background:#fff!important}
+  body.printing>*:not(#print-area){display:none!important}
+  body.printing #print-area{display:block!important}
+}
+.pdoc{color:#111;background:#fff;font-family:"Figtree","Segoe UI",Arial,sans-serif;font-size:12.5pt;line-height:1.4}
+.pdoc header{display:flex;gap:12px;align-items:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
+.pdoc header img{width:46px;height:46px}
+.pdoc header .r{margin-left:auto;text-align:right}
+.pdoc h2{font-size:15pt;margin:0}
+.pdoc table{width:100%;border-collapse:collapse;margin:6px 0}
+.pdoc td,.pdoc th{border:1px solid #999;padding:5px 7px;text-align:left;vertical-align:top;font-size:11pt}
+.pdoc th{background:#eee}
+.pdoc .pkv td:first-child{width:32%;color:#444}
+.pdoc .qrrow{display:flex;gap:14px;align-items:center;margin:10px 0}
+.pdoc .qrrow svg{width:34mm;height:34mm;flex:none}
+.pdoc .sigs{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:18px}
+.pdoc .sigs div{border-top:1px solid #111;padding-top:4px;font-size:10pt;min-height:22mm;display:flex;flex-direction:column;justify-content:flex-end}
+.pdoc .sigs img{max-height:22mm;max-width:100%;object-fit:contain;align-self:flex-start}
+.pdoc .terms{font-size:9.5pt;color:#444;margin-top:12px}
+.pdoc.label{width:62mm;border:1px dashed #999;padding:3mm;display:flex;gap:3mm;align-items:center;page-break-inside:avoid}
+.pdoc.label svg{width:22mm;height:22mm;flex:none}
+.pdoc.label b{font-family:"JetBrains Mono",monospace;font-size:10.5pt}
+.pdoc.label span{display:block;font-size:9pt}
+.chip.okc{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.badc{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.meta .okt{color:var(--ok);font-weight:700}
+
+/* ---------- Ürün Talepleri: ayrı görünüm ---------- */
+.req-view{--r-acc:#B7791F;--r-acc-soft:#FBF0DC;--r-ink:#3B2A12;--r-paper:#FFFDF8;--r-line:#EADFC8;--r-col:#F6F1E6}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .req-view{--r-acc:#E3AE52;--r-acc-soft:#3A2C14;--r-ink:#F3E6CC;--r-paper:#1D1A14;--r-line:#3B3424;--r-col:#16140F}}
+:root[data-theme="dark"] .req-view{--r-acc:#E3AE52;--r-acc-soft:#3A2C14;--r-ink:#F3E6CC;--r-paper:#1D1A14;--r-line:#3B3424;--r-col:#16140F}
+.req-view .toolbar h1{display:flex;align-items:center;gap:10px}
+.req-view .toolbar h1::before{content:"";width:10px;height:26px;border-radius:3px;background:var(--r-acc)}
+.req-view .btn.primary{background:var(--r-acc);border-color:var(--r-acc);color:#fff}
+.req-view .qchip[aria-pressed="true"]{background:var(--r-acc-soft);border-color:var(--r-acc);color:var(--r-acc)}
+.req-view .qchip[aria-pressed="true"] b{color:var(--r-acc)}
+.rboard{flex:1;min-height:0;display:grid;grid-template-columns:repeat(6,minmax(248px,1fr));gap:12px;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scroll-snap-type:x proximity}
+@media (max-width:860px){.rboard{grid-template-columns:repeat(6,minmax(82vw,1fr))}}
+.rcol{background:var(--r-col);border:1px solid var(--r-line);border-radius:14px;display:flex;flex-direction:column;min-height:0;scroll-snap-align:start;min-width:0}
+.rcol.over{border-color:var(--r-acc);background:var(--r-acc-soft)}
+.rcol-h{padding:12px 12px 9px;border-bottom:1px dashed var(--r-line)}
+.rcol-h .row{display:flex;align-items:center;gap:8px}
+.rcol-h h3{font-family:var(--f-display);font-size:.98rem;margin:0;color:var(--r-ink)}
+.rcol-h .n{margin-left:auto;font-family:var(--f-mono);font-size:.8rem;color:var(--r-ink);background:var(--r-paper);border:1px solid var(--r-line);border-radius:20px;padding:0 8px}
+.rcol-h p{margin:2px 0 0;color:var(--muted);font-size:.76rem}
+.rcol-b{padding:10px;display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto;min-height:0}
+.rcard{position:relative;background:var(--r-paper);border:1px solid var(--r-line);border-radius:12px;padding:11px 13px 10px;cursor:pointer;display:flex;flex-direction:column;gap:6px;flex:none;box-shadow:0 1px 0 var(--r-line)}
+.rcard::before,.rcard::after{content:"";position:absolute;top:52px;width:14px;height:14px;border-radius:50%;background:var(--r-col);border:1px solid var(--r-line)}
+.rcard::before{left:-8px;clip-path:inset(0 0 0 50%)}.rcard::after{right:-8px;clip-path:inset(0 50% 0 0)}
+.rcard:hover{border-color:var(--r-acc)}
+.rcard.dragging{opacity:.45}
+.r-top{display:flex;align-items:center;gap:6px;justify-content:space-between}
+.r-no{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.r-purpose{font-size:.62rem;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:20px;white-space:nowrap;flex:none}
+.r-purpose.musteri{background:var(--r-acc);color:#fff}
+.r-purpose.magaza{background:transparent;color:var(--r-ink);border:1.5px solid var(--r-ink)}
+.r-code{font-family:var(--f-mono);font-weight:600;font-size:1.02rem;color:var(--r-ink);letter-spacing:.02em;border-bottom:1px dashed var(--r-line);padding-bottom:7px;margin-bottom:1px;overflow-wrap:anywhere}
+.rcard h4{margin:0;font-size:.94rem;line-height:1.3;color:var(--fg);overflow-wrap:anywhere}
+.r-route{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);flex-wrap:wrap}
+.r-route b{color:var(--r-ink);font-weight:700}
+.r-route svg{width:14px;height:14px;stroke:var(--r-acc);fill:none;stroke-width:2.2}
+.r-cust{font-size:.8rem;color:var(--fg)}
+.r-foot{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:.74rem;color:var(--muted);border-top:1px dashed var(--r-line);padding-top:7px}
+.r-foot .late{color:var(--bad);font-weight:700}
+.r-foot .acil{color:var(--bad);font-weight:800;letter-spacing:.05em}
+.r-foot .mv{white-space:nowrap;margin-left:auto;border:1px solid var(--r-line);background:var(--r-col);border-radius:6px;padding:2px 8px;font-size:.73rem;font-weight:700;color:var(--r-acc);cursor:pointer}
+.r-foot .mv:hover{border-color:var(--r-acc)}
+.r-qty{font-family:var(--f-mono);font-size:.78rem;color:var(--r-ink);background:var(--r-acc-soft);border-radius:6px;padding:0 6px;margin-left:6px}
+.r-empty{color:var(--muted);font-size:.82rem;text-align:center;padding:18px 6px;border:1.5px dashed var(--r-line);border-radius:10px}
+.rdrawer .dr-h{border-bottom:3px solid #C9962B}
+.rdrawer .btn.primary{background:#B7791F;border-color:#B7791F;color:#fff}
+.r-banner:empty{display:none}
+.r-banner{border-radius:10px;padding:10px 14px;background:var(--warn-soft);font-size:.9rem}
+.purpose{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pp{display:flex;gap:10px;align-items:flex-start;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer}
+.pp input{margin-top:3px;accent-color:#B7791F;width:18px;height:18px}
+.pp span{display:flex;flex-direction:column}
+.pp small{color:var(--muted);font-size:.78rem}
+.pp:has(input:checked){border-color:#B7791F;background:var(--warn-soft)}
+.req-hint{font-size:.86rem;color:var(--muted)}
+.tline{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.tline li{font-size:.78rem;padding:3px 10px;border-radius:20px;border:1px solid var(--line-2);color:var(--muted)}
+.tline li.done{background:var(--ok-soft);color:var(--ok);border-color:transparent;font-weight:700}
+.tline li.cur{background:#C9962B;color:#fff;border-color:transparent;font-weight:700}
+.ship-pick{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto}
+.ship-pick label{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line-2);border-radius:9px;cursor:pointer;font-size:.88rem}
+.ship-pick label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.ship-pick input{width:18px;height:18px;accent-color:var(--accent)}
 .toast{position:fixed;left:50%;bottom:max(20px,calc(env(safe-area-inset-bottom,0px) + 12px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:9px;font-weight:600;font-size:.9rem;z-index:90;box-shadow:0 6px 20px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
 @media (prefers-reduced-motion:no-preference){
   .card{transition:border-color .15s,transform .15s}.card:hover{transform:translateY(-1px)}
@@ -380,20 +495,23 @@ td.nw{white-space:nowrap}
 <div class="app" id="app">
   <aside class="side">
     <div class="brand">
-      <svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="#3DB5AE"/><path d="M21.6 9.4a5 5 0 0 0-6.2 6.3l-6 6a1.7 1.7 0 0 0 2.4 2.4l6-6a5 5 0 0 0 6.3-6.2l-2.8 2.8-2.4-.6-.6-2.4z" fill="#04201E"/></svg>
-      <div><b>Servis Takip</b><small>Servis · Sevkiyat · Fatura</small></div>
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#14514C"/><path d="M32 8.6 L50.6 14.8 V30 C50.6 42.1 42.8 50.6 32 55.3 C21.2 50.6 13.4 42.1 13.4 30 V14.8 Z" fill="none" stroke="#E2B650" stroke-width="2"/><path d="M24.5 18.5 H39.5 V24.5 C39.5 29.6 36.2 33 32 33 C27.8 33 24.5 29.6 24.5 24.5 Z" fill="#E2B650"/><path d="M24.5 20.5 H20.8 C20.8 25.2 22.6 27.4 25.6 27.9 M39.5 20.5 H43.2 C43.2 25.2 41.4 27.4 38.4 27.9" fill="none" stroke="#E2B650" stroke-width="2.4" stroke-linecap="round"/><rect x="30.4" y="32.6" width="3.2" height="5.4" fill="#E2B650"/><rect x="26" y="38" width="12" height="3.6" rx="1.2" fill="#E2B650"/><path d="M32 21.2 L33.15 23.55 L35.7 23.9 L33.85 25.7 L34.3 28.25 L32 27.05 L29.7 28.25 L30.15 25.7 L28.3 23.9 L30.85 23.55 Z" fill="#14514C"/><path d="M22 46 C25 48.8 28.4 50.4 32 51.2 C35.6 50.4 39 48.8 42 46" fill="none" stroke="#E2B650" stroke-width="2" stroke-linecap="round"/></svg>
+      <div><b>Ümraniye Şampiyonları</b><small>Servis · Sevkiyat · Talep</small></div>
     </div>
     <nav class="nav" aria-label="Sayfalar">
-      <a href="#pano" data-view="pano"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><span>Pano</span><em class="badge" id="nb-late" hidden></em></a>
-      <a href="#takvim" data-view="takvim"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Tarihe Göre</span></a>
-      <a href="#musteriler" data-view="musteriler"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg><span>Müşteriler</span></a>
-      <a href="#raporlar" data-view="raporlar"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Raporlar</span></a>
-      <a href="#tanimlar" data-view="tanimlar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Tanımlar ve Ayarlar</span></a>
+      <a href="#pano" data-view="pano" class="staff"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><span>Pano</span><em class="badge" id="nb-late" hidden></em></a>
+      <a href="#talepler" data-view="talepler"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 7l2-3h12l2 3M4 7v12a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7"/><path d="M9 12h6M12 9v6"/></svg><span>Ürün Talepleri</span><em class="badge gold" id="nb-req" hidden></em></a>
+      <a href="#sevkiyat" data-view="sevkiyat" class="staff"><svg viewBox="0 0 24 24"><path d="M2 7h11v9H2zM13 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Sevkiyatlar</span></a>
+      <a href="#takvim" data-view="takvim" class="staff"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Tarihe Göre</span></a>
+      <a href="#musteriler" data-view="musteriler" class="staff"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg><span>Müşteriler</span></a>
+      <a href="#raporlar" data-view="raporlar" class="staff"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Raporlar</span></a>
+      <a href="#tanimlar" data-view="tanimlar" class="staff"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Tanımlar ve Ayarlar</span></a>
     </nav>
     <div class="side-foot">
       <p class="live" id="live" data-state="wait"><i></i><span>Bağlanıyor…</span></p>
       <p class="side-note" id="side-note"></p>
-      <button type="button" id="btn-pw" title="Şifremi değiştir"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span id="me-name"></span></button>
+      <button type="button" id="btn-install" hidden><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg><span>Uygulamayı yükle</span></button>
+      <button type="button" id="btn-pw" title="Profilim"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span id="me-name"></span></button>
       <button type="button" id="btn-logout"><svg viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11"/></svg><span>Çıkış yap</span></button>
       <button type="button" id="btn-full"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Tam ekran</span></button>
       <button type="button" id="btn-collapse"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span>Menüyü daralt</span></button>
@@ -403,6 +521,8 @@ td.nw{white-space:nowrap}
   <div class="main">
     <div id="banner" class="banner" hidden style="margin:12px max(16px,env(safe-area-inset-right,0px)) 0 max(16px,env(safe-area-inset-left,0px))"></div>
     <section class="view board-view" id="view-pano"></section>
+    <section class="view board-view req-view" id="view-talepler" hidden></section>
+    <section class="view" id="view-sevkiyat" hidden></section>
     <section class="view" id="view-takvim" hidden></section>
     <section class="view" id="view-musteriler" hidden></section>
     <section class="view" id="view-raporlar" hidden></section>
@@ -413,6 +533,13 @@ td.nw{white-space:nowrap}
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="d-title" hidden>
   <div class="dr-h"><h2 id="d-title">Yeni Arıza Kaydı</h2><span class="no" id="d-no"></span><span id="d-pill"></span><button class="x" type="button" id="d-close" aria-label="Kapat">×</button></div>
+  <div class="dr-actions" id="d-actions" hidden>
+    <button class="btn small" type="button" data-tact="fis">Teslim fişi</button>
+    <button class="btn small" type="button" data-tact="imza">İmza al</button>
+    <button class="btn small" type="button" data-tact="etiket">QR etiket</button>
+    <button class="btn small" type="button" data-tact="link">Takip linki</button>
+    <button class="btn small" type="button" data-tact="sor">Servise durum sor</button>
+  </div>
   <form class="dr-b" id="tform" autocomplete="off">
     <div class="sec">
       <div class="grid four">
@@ -452,6 +579,24 @@ td.nw{white-space:nowrap}
         <div class="field"><label for="f-delivered">Müşteriye teslim</label><input id="f-delivered" type="date"></div>
       </div>
       <div id="d-ship"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-h"><h3>Servis sonucu ve onarım onayı</h3><span class="c" id="c-quote"></span></div>
+      <div class="grid three">
+        <div class="field"><label for="f-result">Servis sonucu</label><select id="f-result"><option value="">Henüz yok</option><option value="tamir_edildi">Onarıldı</option><option value="degisim">Değişim</option><option value="iade">İade</option><option value="tamir_edilemez">Onarılamadı</option><option value="ucretli">Ücretli onarım</option></select></div>
+        <div class="field"><label for="f-qamt">Onarım bedeli (₺)</label><input id="f-qamt" type="number" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="field"><label for="f-qstatus">Müşteri onayı</label><select id="f-qstatus"><option value="">Gerekmiyor</option><option value="bekliyor">Onay bekleniyor</option><option value="onaylandi">Onaylandı</option><option value="reddedildi">Reddedildi</option></select></div>
+        <div class="field full"><label for="f-qnote">Bedel açıklaması (müşteri takip sayfasında görür)</label><input id="f-qnote" placeholder="Örn. Kompresör değişimi"></div>
+      </div>
+      <p class="hint" style="margin:0">“Onay bekleniyor” seçili kayıtlarda müşteri takip sayfasındaki düğmeyle onay verir, sonuç buraya anında düşer. Müşteriye “Onarım onayı” mesajını gönderin.</p>
+    </div>
+    <div class="sec">
+      <div class="sec-h"><h3>Ödünç ürün</h3><span class="c" id="c-loan"></span></div>
+      <div class="grid three">
+        <div class="field"><label for="f-loan">Müşteriye verilen ürün</label><input id="f-loan" placeholder="Örn. Yedek süpürge (S-02)"></div>
+        <div class="field"><label for="f-loangiven">Veriliş tarihi</label><input id="f-loangiven" type="date"></div>
+        <div class="field"><label for="f-loanback">Geri alınış tarihi</label><input id="f-loanback" type="date"></div>
+      </div>
     </div>
     <div class="sec" id="sec-sms">
       <div class="sec-h"><h3>Müşteriye SMS</h3><span class="c" id="c-sms"></span></div>
@@ -505,6 +650,74 @@ td.nw{white-space:nowrap}
   </div>
 </aside>
 
+<div class="scrim" id="rscrim" hidden></div>
+<aside class="drawer rdrawer" id="rdrawer" role="dialog" aria-modal="true" aria-labelledby="r-title" hidden>
+  <div class="dr-h"><h2 id="r-title">Yeni ürün talebi</h2><span class="no" id="r-no"></span><span id="r-pill"></span><button class="x" type="button" id="r-close" aria-label="Kapat">×</button></div>
+  <form class="dr-b" id="rform-req" autocomplete="off">
+    <div class="r-banner" id="r-banner"></div>
+    <div class="sec">
+      <div class="grid">
+        <div class="field"><label for="r-product">Ürün adı</label><input id="r-product" required placeholder="Örn. Bosch 6 programlı bulaşık makinesi"></div>
+        <div class="field"><label for="r-code">Ürün kodu</label><input id="r-code" required placeholder="Örn. SMS6ZCI42E" style="font-family:var(--f-mono);text-transform:uppercase"></div>
+        <div class="field"><label for="r-qty">Adet</label><input id="r-qty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
+        <div class="field"><label for="r-from">Hangi şubeden istenecek?</label><input id="r-from" list="dl-branches" required placeholder="Şube seçin veya yazın"></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-h"><h3>Kimin için?</h3></div>
+      <div class="purpose" role="radiogroup" aria-label="Kimin için">
+        <label class="pp"><input type="radio" name="r-purpose" value="musteri" id="r-pm"><span><b>Müşteri için</b><small>Bir müşteri bu ürünü bekliyor</small></span></label>
+        <label class="pp"><input type="radio" name="r-purpose" value="magaza" id="r-ps"><span><b>Mağaza için</b><small>Stok / teşhir için</small></span></label>
+      </div>
+      <div class="grid" id="r-custrow">
+        <div class="field"><label for="r-customer">Müşteri adı</label><input id="r-customer" placeholder="Ad Soyad"></div>
+        <div class="field"><label for="r-cphone">Müşteri telefonu</label><input id="r-cphone" type="tel" placeholder="05xx xxx xx xx"></div>
+      </div>
+      <div class="grid">
+        <div class="field"><label for="r-needed">En geç ne zaman lazım?</label><input id="r-needed" type="date"></div>
+        <div class="field"><label for="r-pri">Öncelik</label><select id="r-pri"><option value="normal">Normal</option><option value="acil">Acil</option></select></div>
+        <div class="field full"><label for="r-note">Not</label><textarea id="r-note" style="min-height:60px" placeholder="Renk, beden, müşteri notu…"></textarea></div>
+      </div>
+    </div>
+    <div class="sec" id="r-staff">
+      <div class="sec-h"><h3>Talep durumu</h3></div>
+      <div class="grid">
+        <div class="field"><label for="r-status">Durum</label><select id="r-status"></select></div>
+        <div class="field" id="r-cancelrow"><label for="r-cancel">Karşılanamama nedeni (satıcıya e-postayla gider)</label><input id="r-cancel" placeholder="Örn. Stokta yok"></div>
+      </div>
+      <p class="hint" style="margin:0" id="r-mailhint"></p>
+    </div>
+    <div class="sec" id="r-info"></div>
+  </form>
+  <div class="dr-f">
+    <button class="btn danger" type="button" id="r-del" hidden>Talebi sil</button>
+    <span class="err" id="r-err"></span>
+    <span class="sp"></span>
+    <button class="btn" type="button" id="r-cancelbtn">Kapat</button>
+    <button class="btn primary" type="submit" form="rform-req" id="r-save">Talebi gönder</button>
+  </div>
+</aside>
+
+<div class="login" id="sig-modal" hidden style="background:var(--scrim)">
+  <div class="login-card" style="max-width:560px">
+    <h2 style="margin:0;font-family:var(--f-display)">Müşteri imzası</h2>
+    <p class="hint" style="margin:0" id="sig-sub"></p>
+    <canvas id="sig-canvas" class="sig-canvas" width="1000" height="360" aria-label="İmza alanı"></canvas>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn ghost" type="button" id="sig-clear">Temizle</button><span style="flex:1"></span><button class="btn" type="button" id="sig-cancel">Vazgeç</button><button class="btn primary" type="button" id="sig-save">İmzayı kaydet</button></div>
+  </div>
+</div>
+
+<div class="login" id="ask-modal" hidden style="background:var(--scrim)">
+  <div class="login-card" style="max-width:560px">
+    <h2 style="margin:0;font-family:var(--f-display)">Servise durum sor</h2>
+    <p class="hint" style="margin:0" id="ask-to"></p>
+    <textarea id="ask-text" class="sms-text" style="min-height:130px" aria-label="Mesaj"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn primary small" id="ask-wa" href="#" target="_blank" rel="noopener">WhatsApp</a><a class="btn small" id="ask-sms" href="#">SMS</a><a class="btn small" id="ask-mail" href="#">E-posta</a><button class="btn small" type="button" id="ask-copy">Kopyala</button><span style="flex:1"></span><button class="btn small" type="button" id="ask-close">Kapat</button></div>
+  </div>
+</div>
+
+<div id="print-area" aria-hidden="true"></div>
+<datalist id="dl-branches"></datalist>
 <div class="lightbox" id="lightbox" hidden><img id="lb-img" alt=""></div>
 <datalist id="dl-firms"></datalist>
 <datalist id="dl-customers"></datalist>
@@ -514,24 +727,65 @@ td.nw{white-space:nowrap}
 <div class="smsbar" id="smsbar" hidden role="status"><div class="smsbar-t"><b id="sb-title"></b><span id="sb-text"></span></div><a class="btn primary small" id="sb-open" href="#">Telefonda aç ve gönder</a><button class="btn small ghost" id="sb-x" type="button">Kapat</button></div>
 
 <div class="login" id="login" hidden>
-  <form class="login-card" id="lform" autocomplete="on">
-    <div class="brand-l"><svg viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--accent)"/><path d="M21.6 9.4a5 5 0 0 0-6.2 6.3l-6 6a1.7 1.7 0 0 0 2.4 2.4l6-6a5 5 0 0 0 6.3-6.2l-2.8 2.8-2.4-.6-.6-2.4z" fill="var(--accent-fg)"/></svg><div><h1>Servis Takip Panosu</h1><p>Servis gönderimi, sevkiyat ve fatura takibi</p></div></div>
-    <div class="field"><label for="l-user">Kullanıcı adı</label><input id="l-user" name="username" autocomplete="username" required></div>
-    <div class="field"><label for="l-pass">Şifre</label><input id="l-pass" name="password" type="password" autocomplete="current-password" required></div>
-    <p class="err" id="l-msg" role="alert"></p>
-    <button class="btn primary" type="submit" id="l-btn" style="width:100%">Giriş yap</button>
-    <p class="hint" style="margin:0">Hesabınız yoksa yöneticinizden kullanıcı adı ve şifre isteyin.</p>
-  </form>
+  <div class="login-wrap">
+    <div class="login-hero">
+      <svg class="hero-logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#14514C"/><path d="M32 8.6 L50.6 14.8 V30 C50.6 42.1 42.8 50.6 32 55.3 C21.2 50.6 13.4 42.1 13.4 30 V14.8 Z" fill="none" stroke="#E2B650" stroke-width="2"/><path d="M24.5 18.5 H39.5 V24.5 C39.5 29.6 36.2 33 32 33 C27.8 33 24.5 29.6 24.5 24.5 Z" fill="#E2B650"/><path d="M24.5 20.5 H20.8 C20.8 25.2 22.6 27.4 25.6 27.9 M39.5 20.5 H43.2 C43.2 25.2 41.4 27.4 38.4 27.9" fill="none" stroke="#E2B650" stroke-width="2.4" stroke-linecap="round"/><rect x="30.4" y="32.6" width="3.2" height="5.4" fill="#E2B650"/><rect x="26" y="38" width="12" height="3.6" rx="1.2" fill="#E2B650"/><path d="M32 21.2 L33.15 23.55 L35.7 23.9 L33.85 25.7 L34.3 28.25 L32 27.05 L29.7 28.25 L30.15 25.7 L28.3 23.9 L30.85 23.55 Z" fill="#14514C"/><path d="M22 46 C25 48.8 28.4 50.4 32 51.2 C35.6 50.4 39 48.8 42 46" fill="none" stroke="#E2B650" stroke-width="2" stroke-linecap="round"/></svg>
+      <h1>Ümraniye Şampiyonları</h1>
+      <p>Servis takibi, sevkiyat ve şubeler arası ürün talepleri tek ekranda.</p>
+    </div>
+    <div class="login-card">
+      <div class="ltabs" role="tablist"><button type="button" data-lmode="login" aria-pressed="true">Giriş yap</button><button type="button" data-lmode="register" aria-pressed="false">Kayıt ol</button></div>
+      <form id="lform" autocomplete="on" class="lmode" data-mode="login">
+        <div class="field"><label for="l-user">E-posta veya kullanıcı adı</label><input id="l-user" name="username" autocomplete="username" required></div>
+        <div class="field"><label for="l-pass">Şifre</label><input id="l-pass" name="password" type="password" autocomplete="current-password" required></div>
+        <button class="btn primary" type="submit" id="l-btn" style="width:100%">Giriş yap</button>
+        <button class="linkbtn" type="button" data-lmode="forgot">Şifremi unuttum</button>
+      </form>
+      <form id="regform" class="lmode" data-mode="register" hidden autocomplete="on">
+        <div class="field"><label for="g-name">Ad soyad</label><input id="g-name" autocomplete="name" required></div>
+        <div class="field"><label for="g-email">E-posta</label><input id="g-email" type="email" autocomplete="email" required></div>
+        <div class="grid" style="gap:10px"><div class="field"><label for="g-phone">Telefon</label><input id="g-phone" type="tel" autocomplete="tel" placeholder="05xx…"></div><div class="field"><label for="g-branch">Şubeniz</label><input id="g-branch" list="dl-branches" required placeholder="Şube seçin"></div></div>
+        <div class="field"><label for="g-pass">Şifre (en az 6 karakter)</label><input id="g-pass" type="password" autocomplete="new-password" minlength="6" required></div>
+        <button class="btn primary" type="submit" id="g-btn" style="width:100%">Kayıt ol</button>
+        <p class="hint" style="margin:0">Kayıttan sonra e-posta adresinize doğrulama bağlantısı gönderilir. Doğruladıktan sonra şubeler arası ürün talebi açabilirsiniz.</p>
+      </form>
+      <form id="fgform" class="lmode" data-mode="forgot" hidden>
+        <p style="margin:0">Hesabınızdaki e-posta adresini yazın, şifre sıfırlama bağlantısı gönderelim.</p>
+        <div class="field"><label for="f-email">E-posta</label><input id="f-email" type="email" autocomplete="email" required></div>
+        <button class="btn primary" type="submit" style="width:100%">Sıfırlama bağlantısı gönder</button>
+        <button class="linkbtn" type="button" data-lmode="login">Girişe dön</button>
+      </form>
+      <form id="rsform" class="lmode" data-mode="reset" hidden>
+        <p style="margin:0">Yeni şifrenizi belirleyin.</p>
+        <div class="field"><label for="x-pass">Yeni şifre</label><input id="x-pass" type="password" autocomplete="new-password" minlength="6" required></div>
+        <button class="btn primary" type="submit" style="width:100%">Şifreyi kaydet</button>
+      </form>
+      <div class="lnote" id="l-msg" role="alert"></div>
+    </div>
+  </div>
 </div>
 
 <div class="login" id="pw-modal" hidden style="background:var(--scrim)">
-  <form class="login-card" id="pw-form">
-    <h2 style="margin:0;font-family:var(--f-display)">Şifremi değiştir</h2>
-    <div class="field"><label for="pw-cur">Mevcut şifre</label><input id="pw-cur" type="password" autocomplete="current-password" required></div>
-    <div class="field"><label for="pw-new">Yeni şifre</label><input id="pw-new" type="password" autocomplete="new-password" minlength="6" required></div>
-    <p class="err" id="pw-msg"></p>
-    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" type="button" id="pw-cancel">Vazgeç</button><button class="btn primary" type="submit">Değiştir</button></div>
-  </form>
+  <div class="login-card" style="max-width:520px">
+    <div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-family:var(--f-display);flex:1">Profilim</h2><button class="x" type="button" id="pw-cancel" aria-label="Kapat" style="border:0;background:none;font-size:1.5rem;color:var(--muted);cursor:pointer">×</button></div>
+    <form id="pf-form" style="display:flex;flex-direction:column;gap:10px">
+      <div class="grid" style="gap:10px"><div class="field"><label for="pf-name">Ad soyad</label><input id="pf-name" required></div><div class="field"><label for="pf-phone">Telefon</label><input id="pf-phone" type="tel"></div>
+      <div class="field"><label for="pf-branch">Şube</label><input id="pf-branch" list="dl-branches"></div><div class="field"><label for="pf-email">E-posta</label><input id="pf-email" type="email"></div></div>
+      <button class="btn primary small" type="submit" style="align-self:flex-start">Bilgilerimi kaydet</button>
+    </form>
+    <form id="pw-form" style="display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line-2);padding-top:12px">
+      <b>Şifre değiştir</b>
+      <div class="grid" style="gap:10px"><div class="field"><label for="pw-cur">Mevcut şifre</label><input id="pw-cur" type="password" autocomplete="current-password" required></div><div class="field"><label for="pw-new">Yeni şifre</label><input id="pw-new" type="password" autocomplete="new-password" minlength="6" required></div></div>
+      <button class="btn small" type="submit" style="align-self:flex-start">Şifreyi değiştir</button>
+    </form>
+    <p class="err" id="pw-msg" style="margin:0"></p>
+    <div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line-2);padding-top:12px">
+      <b>Telefon bildirimleri</b>
+      <p class="hint" style="margin:0" id="push-state">Kontrol ediliyor…</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn small primary" type="button" id="push-on">Bu cihazda bildirimleri aç</button><button class="btn small" type="button" id="push-test" hidden>Deneme bildirimi</button><button class="btn small ghost" type="button" id="push-off" hidden>Kapat</button></div>
+      <p class="hint" style="margin:0" id="install-hint"></p>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -565,19 +819,22 @@ const CARRIERS=[
   {k:'elden',name:'Elden'},
   {k:'diger',name:'Diğer'}
 ];
+const RESULT_LBL={tamir_edildi:'Onarıldı',degisim:'Değişim',iade:'İade',tamir_edilemez:'Onarılamadı',ucretli:'Ücretli onarım'};
 const CARRIER_MAP=Object.fromEntries(CARRIERS.map(c=>[c.k,c]));
 const DEF_TPL={
-  teslim_alindi:'Sayın {musteri}, {urun} ürününüz servise gönderilmek üzere teslim alınmıştır. Kayıt no: {kayitno}. {magaza}',
+  teslim_alindi:'Sayın {musteri}, {urun} ürününüz servise gönderilmek üzere teslim alınmıştır. Kayıt no: {kayitno}. Durumunu buradan takip edebilirsiniz: {takiplink} {magaza}',
   servise_gonderildi:'Sayın {musteri}, {urun} ürününüz servise gönderilmiştir. Kayıt no: {kayitno}. Gelişmeleri size bildireceğiz. {magaza}',
   servisten_geldi:'Sayın {musteri}, {urun} ürününüz servisten gelmiştir, mağazamızdan teslim alabilirsiniz. Kayıt no: {kayitno}. {magaza} {telefon}',
-  musteriye_teslim:'Sayın {musteri}, {urun} ürününüzü teslim aldığınız için teşekkür ederiz. {magaza}'
+  musteriye_teslim:'Sayın {musteri}, {urun} ürününüzü teslim aldığınız için teşekkür ederiz. {magaza}',
+  teklif:'Sayın {musteri}, {urun} ürününüz için servisin bildirdiği onarım bedeli {tutar}. Onaylamak için: {takiplink} {magaza}',
+  hatirlatma:'Sayın {musteri}, {urun} ürününüz {gun} gündür mağazamızda sizi bekliyor. Kayıt no: {kayitno}. {magaza} {telefon}'
 };
-const TPL_LABEL={teslim_alindi:'Ürün teslim alındı',servise_gonderildi:'Servise gönderildi',servisten_geldi:'Servisten geldi, teslim alabilir',musteriye_teslim:'Teslim edildi, teşekkür',ozel:'Boş mesaj (kendim yazacağım)'};
+const TPL_LABEL={teslim_alindi:'Ürün teslim alındı',servise_gonderildi:'Servise gönderildi',teklif:'Onarım onayı (bedel)',servisten_geldi:'Servisten geldi, teslim alabilir',hatirlatma:'Mağazada bekliyor hatırlatması',musteriye_teslim:'Teslim edildi, teşekkür',ozel:'Boş mesaj (kendim yazacağım)'};
 const PRI={acil:'Acil',normal:'Normal',dusuk:'Düşük'};
 const WAR={garantili:'Garantili',ucretli:'Ücretli'};
-const DEF_SETTINGS={slaDays:7,businessDays:true,saturdayWork:false,holidays:[],reportEmail:'',reportNote:'',storeName:'',storePhone:'',serviceWarnDays:15,smsTpl:{}};
-const COLS=['tickets','firms','customers','categories','products'];
-const S={tickets:[],firms:[],customers:[],categories:[],products:[],settings:{...DEF_SETTINGS},hol:new Set(),loaded:{},
+const DEF_SETTINGS={slaDays:7,businessDays:true,saturdayWork:false,holidays:[],reportEmail:'',reportNote:'',storeName:'',storePhone:'',serviceWarnDays:15,waitDays:3,requestNotifyEmail:'',smsTpl:{}};
+const COLS=['tickets','firms','customers','categories','products','requests','branches','shipments'];
+const S={tickets:[],firms:[],customers:[],categories:[],products:[],requests:[],branches:[],shipments:[],rq:'',rFrom:'',rPurpose:'',rQuick:'',rEditing:null,shipDraft:null,settings:{...DEF_SETTINGS},hol:new Set(),loaded:{},
   db:null,user:null,assets:null,downloads:null,sample:null,me:null,names:{},canWrite:true,
   view:'pano',q:'',fCat:'',fFirm:'',fPri:'',fWar:'',quick:'',editing:null,draft:null,custSel:null,custQ:'',
   rep:{preset:'month',from:'',to:''},busy:new Set()};
@@ -639,9 +896,13 @@ function svcInfo(t){if(!t.sentAt)return null;const end=t.backAt||today();return 
 function legalInfo(t){if(t.warranty!=='garantili'||!(t.openedAt||t.sentAt))return null;const start=[t.openedAt,t.sentAt].filter(Boolean).sort()[0];const end=t.backAt||t.deliveredAt||today();return {days:Math.max(0,between(start,end,true)),limit:20,done:!!(t.backAt||t.deliveredAt)}}
 function svcCls(n){const w=Number(S.settings.serviceWarnDays)||15;return n>20?'bad':n>=w?'warn':''}
 function isLong(t){if(!['servise_gonderildi','serviste'].includes(t.status))return false;const a=svcInfo(t),L=legalInfo(t),w=Number(S.settings.serviceWarnDays)||15;return !!((a&&a.days>=w)||(L&&L.days>=w))}
+function trackUrl(t){return location.origin+'/takip/'+t.publicToken}
+function needsPickup(t){return t.status==='servisten_geldi'&&t.backAt&&diff(t.backAt,today())>=(Number(S.settings.waitDays)||3)}
+function loanOut(t){return !!(t.loaner&&t.loaner.name&&!t.loaner.backAt)}
+async function ensureToken(t){if(!t||t.publicToken||!S.canWrite)return t;const tok=genId();try{await S.db.doc('tickets/'+t.id).update({publicToken:tok})}catch(_){}return {...t,publicToken:tok}}
 function needsNotify(t){return t.status==='servisten_geldi'&&!(t.sms||[]).some(x=>x.stage==='servisten_geldi')}
 function tplText(stage){const m=S.settings.smsTpl||{};return (m[stage]!=null&&String(m[stage]).trim()!=='')?m[stage]:(DEF_TPL[stage]||'')}
-function fillTpl(txt,t){const c=CARRIER_MAP[t.carrier];const v={musteri:t.customerName||'',urun:t.productName||'',kayitno:t.no||'',magaza:S.settings.storeName||'',telefon:S.settings.storePhone||'',kargo:c?c.name:'',takipno:t.trackNo||'',servis:t.firmName||''};
+function fillTpl(txt,t){const c=CARRIER_MAP[t.carrier];const v={musteri:t.customerName||'',urun:t.productName||'',kayitno:t.no||'',magaza:S.settings.storeName||'',telefon:S.settings.storePhone||'',kargo:c?c.name:'',takipno:t.trackNo||'',servis:t.firmName||'',takiplink:t.publicToken?trackUrl(t):'',tutar:t.quote&&t.quote.amount?money(t.quote.amount):'',gun:t.backAt?String(Math.max(0,diff(t.backAt,today()))):''};
   return String(txt||'').replace(/\{(\w+)\}/g,(m,k)=>k in v?v[k]:m).replace(/[ \t]{2,}/g,' ').replace(/ +([.,!?])/g,'$1').trim()}
 function telE164(p){let d=String(p||'').replace(/\D/g,'');if(!d)return '';if(d.startsWith('00'))d=d.slice(2);if(d.length===11&&d[0]==='0')d='90'+d.slice(1);else if(d.length===10&&d[0]==='5')d='90'+d;return '+'+d}
 function telNice(p){const e=telE164(p);const m=e.match(/^\+90(\d{3})(\d{3})(\d{2})(\d{2})$/);return m?`0${m[1]} ${m[2]} ${m[3]} ${m[4]}`:e}
@@ -651,8 +912,8 @@ async function logSms(id,stage,text){const t=S.tickets.find(x=>x.id===id);if(!t|
   try{await S.db.doc('tickets/'+id).update({sms,updatedAt:iso(),log:[...(t.log||[]),logEntry('Müşteriye SMS hazırlandı: '+(TPL_LABEL[stage]||'Mesaj'))].slice(-80)})}catch(e){toast(errMsg(e))}}
 let sbT=null,sbData=null;
 function smsPrompt(t,stage){
-  if(!DEF_TPL[stage]||!t||!t.customerPhone||!telE164(t.customerPhone)){if(DEF_TPL[stage]&&t&&!t.customerPhone)toast('Müşteri telefonu girilmemiş, SMS gönderilemez');return}
-  const text=fillTpl(tplText(stage),t);sbData={id:t.id,stage,text};
+  if(!DEF_TPL[stage]||stage==='hatirlatma'||!t||!t.customerPhone||!telE164(t.customerPhone)){if(DEF_TPL[stage]&&t&&!t.customerPhone)toast('Müşteri telefonu girilmemiş, SMS gönderilemez');return}
+  const text=fillTpl(tplText(stage),t);sbData={id:t.id,stage,text};if(stage==='teklif')$('sb-title').dataset.k='1';
   $('sb-title').textContent=`${t.no} · ${t.customerName}: müşteriye SMS gönderilsin mi?`;$('sb-text').textContent=text;
   $('sb-open').href=smsHref(t.customerPhone,text);$('smsbar').hidden=false;clearTimeout(sbT);sbT=setTimeout(()=>{$('smsbar').hidden=true},20000);
 }
@@ -693,14 +954,16 @@ function filtered(){
       if(S.quick==='acil'&&t.priority!=='acil')return false;
       if(S.quick==='uzun'&&!isLong(t))return false;
       if(S.quick==='haber'&&!needsNotify(t))return false;
+      if(S.quick==='bekleyen'&&!needsPickup(t))return false;
+      if(S.quick==='onay'&&!(t.quote&&t.quote.status==='bekliyor'))return false;
     }
     return true;
   });
 }
 function counts(){
-  const act=S.tickets.filter(t=>ACTIVE.includes(t.status));let late=0,soon=0,acil=0,uzun=0,haber=0;
-  for(const t of act){const s=sla(t);if(s.left<0)late++;else if(s.left<=2)soon++;if(t.priority==='acil')acil++;if(isLong(t))uzun++;if(needsNotify(t))haber++}
-  return {act:act.length,late,soon,acil,uzun,haber};
+  const act=S.tickets.filter(t=>ACTIVE.includes(t.status));let late=0,soon=0,acil=0,uzun=0,haber=0,bekleyen=0,onay=0;
+  for(const t of act){const s=sla(t);if(s.left<0)late++;else if(s.left<=2)soon++;if(t.priority==='acil')acil++;if(isLong(t))uzun++;if(needsNotify(t))haber++;if(needsPickup(t))bekleyen++;if(t.quote&&t.quote.status==='bekliyor')onay++}
+  return {act:act.length,late,soon,acil,uzun,haber,bekleyen,onay};
 }
 
 /* ================= render root ================= */
@@ -708,10 +971,13 @@ let raf=0;
 function schedule(){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;render()})}
 function render(){
   const c=counts();const b=$('nb-late');b.hidden=!c.late;b.textContent=c.late;b.title=c.late+' kaydın süresi geçti';
+  {const nr=S.isSeller?0:S.requests.filter(r=>r.status==='yeni').length;const e=$('nb-req');e.hidden=!nr;e.textContent=nr;e.title=nr+' yeni talep'}
   if(S.view==='pano')renderBoard(c);
   else if(S.view==='takvim')renderCal();
   else if(S.view==='musteriler')renderCust();
   else if(S.view==='raporlar')renderRep();
+  else if(S.view==='talepler')renderReq();
+  else if(S.view==='sevkiyat')renderShip();
   else renderDefs();
   renderLists();
   $('side-note').textContent=S.db?(S.canWrite?'Değişiklikler anında herkese yansır.':'Görüntüleme modundasınız.'):'';
@@ -735,6 +1001,10 @@ function cardHTML(t){
       if(t.status==='servise_gonderildi'&&t.trackNo)bits.push(`<span>${esc((CARRIER_MAP[t.carrier]||{}).name||'Kargo')}: ${esc(t.trackNo)}</span>`);
       if(t.svcNo&&inSvc)bits.push(`<span>İş emri ${esc(t.svcNo)}</span>`);
       if(needsNotify(t))bits.push(`<span class="warn">Müşteriye haber verilmedi</span>`);
+      if(needsPickup(t))bits.push(`<span class="warn">${diff(t.backAt,today())} gündür mağazada bekliyor</span>`);
+      if(t.quote&&t.quote.amount&&t.quote.status){const qs=t.quote.status;bits.push(`<span class="${qs==='bekliyor'?'warn':qs==='onaylandi'?'okt':'bad'}">${qs==='bekliyor'?'Onarım onayı bekleniyor':qs==='onaylandi'?'Onarım onaylandı':'Onarım reddedildi'} · ${esc(money(t.quote.amount))}</span>`)}
+      if(loanOut(t))bits.push(`<span class="warn">Ödünç ürün müşteride</span>`);
+      if(t.serviceResult&&RESULT_LBL[t.serviceResult])bits.push(`<span>Sonuç: ${esc(RESULT_LBL[t.serviceResult])}</span>`);
       return bits.length?`<div class="meta">${bits.join('')}</div>`:''})()}
     ${(t.tech||parts.length||files||cm)?`<div class="meta">${t.tech?`<span>${ICON.user}${esc(t.tech)}</span>`:''}${parts.length?`<span title="Parçalar">${ICON.box}${waiting?waiting+' bekleniyor':'parçalar geldi'}</span>`:''}${files?`<span title="Ekler">${ICON.clip}${files}</span>`:''}${cm?`<span title="Yorumlar">${ICON.chat}${cm}</span>`:''}</div>`:''}
     <div class="sla"><div class="bar"><i style="width:${s.pct}%"></i></div><em>${esc(s.txt)}</em></div>
@@ -746,7 +1016,7 @@ function boardToolbar(c){
   const q=(k,label,n,cls)=>`<button type="button" class="qchip ${cls||''}" data-quick="${k}" aria-pressed="${S.quick===k}">${label} <b>${n}</b></button>`;
   return `<div class="toolbar">
     <h1>Pano</h1>
-    <div class="qchips">${q('', 'Açık kayıt',c.act)}${q('late','Süresi geçen',c.late,c.late?'bad':'')}${q('soon','2 gün içinde',c.soon,c.soon?'warn':'')}${q('uzun','Serviste uzun kalan',c.uzun,c.uzun?'warn':'')}${q('haber','Müşteriye haber bekleyen',c.haber,c.haber?'warn':'')}${q('acil','Acil',c.acil,c.acil?'bad':'')}</div>
+    <div class="qchips">${q('', 'Açık kayıt',c.act)}${q('late','Süresi geçen',c.late,c.late?'bad':'')}${q('soon','2 gün içinde',c.soon,c.soon?'warn':'')}${q('uzun','Serviste uzun kalan',c.uzun,c.uzun?'warn':'')}${q('haber','Müşteriye haber bekleyen',c.haber,c.haber?'warn':'')}${q('bekleyen','Mağazada bekleyen',c.bekleyen,c.bekleyen?'warn':'')}${q('onay','Onay bekleyen',c.onay,c.onay?'warn':'')}${q('acil','Acil',c.acil,c.acil?'bad':'')}</div>
     <span class="sp"></span>
     <button class="btn" type="button" data-act="xlsx" ${S.downloads?'':'hidden'}><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel</button>
     <button class="btn primary" type="button" data-act="new" ${S.db&&S.canWrite?'':'disabled'}>+ Yeni arıza kaydı</button>
@@ -965,11 +1235,18 @@ function renderDefs(){
         ${S.canWrite?'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary small" type="submit">Kaydet</button><span class="hint" style="align-self:center">Bir şablonu boşaltırsanız varsayılan metin kullanılır.</span></div>':''}
       </form>
     </section>
-    <section class="panel"><div class="panel-h"><h3>Günlük e-posta raporu</h3></div>
-      <div class="body"><p style="margin:0;font-size:.9rem">Pazartesi–cumartesi her sabah 08:40'ta süresi geçen, bugün dolan ve 2 gün içinde dolacak kayıtların özeti <b>${esc(st.reportEmail||'ert545855@gmail.com')}</b> adresine gönderilir.</p>${st.reportNote?`<p class="hint" style="margin:0">${esc(st.reportNote)}</p>`:''}</div>
+    <section class="panel"><div class="panel-h"><h3>E-posta ve bildirimler</h3><p>${S.mailEnabled?'E-posta gönderimi açık.':'E-posta gönderimi sunucuda kapalı.'} Günlük rapor pazartesi–cumartesi 08:40'tan sonra sisteme ilk girişte gönderilir.</p></div>
+      <form class="body" id="mail-form">
+        <div class="field"><label for="m-report">Günlük rapor alıcısı</label><input id="m-report" type="email" value="${esc(st.reportEmail||'')}" placeholder="ornek@gmail.com" ${S.isAdmin?'':'disabled'}></div>
+        <div class="field"><label for="m-req">Yeni ürün talebi bildirimi</label><input id="m-req" type="email" value="${esc(st.requestNotifyEmail||'')}" placeholder="Boşsa rapor alıcısına gider" ${S.isAdmin?'':'disabled'}></div>
+        <div class="field"><label for="m-wait">Mağazada bekleme uyarısı</label><div class="inline" style="align-items:center"><input id="m-wait" type="number" min="1" max="60" value="${esc(st.waitDays||3)}" style="max-width:90px" ${S.canWrite?'':'disabled'}><span class="hint">gün sonra kartta uyarı ve hatırlatma SMS'i</span></div></div>
+        ${S.isAdmin?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary small" type="submit">Kaydet</button><button class="btn small" type="button" data-act="report-now">Raporu şimdi gönder</button><button class="btn small" type="button" data-act="mail-test">Deneme e-postası</button></div>`:''}
+        <p class="hint" style="margin:0">Satıcılara giden e-postalar: kayıt doğrulama, şifre sıfırlama, talebin “Talep Edildi”, “Yolda”, “Şubeye Geldi” ve “Karşılanamadı” durumları.</p>
+      </form>
     </section>
     ${defPanel('categories','Kategoriler','Her kategori için ayrı fatura süresi girebilirsiniz; boş bırakılırsa varsayılan süre geçerli olur.','<input class="inp" name="name" id="d-cat-name" placeholder="Örn. Züccaciye, Mobilya" required><input class="inp" name="slaDays" id="d-cat-sla" type="number" min="1" max="60" placeholder="Süre (isteğe bağlı)" style="flex:0 1 150px">',cats,()=>'')}
-    ${defPanel('firms','Servis firmaları / markalar','Ürünleri gönderdiğiniz servisler.','<input class="inp" name="name" id="d-firm-name" placeholder="Firma adı" required><input class="inp" name="phone" id="d-firm-phone" placeholder="Telefon">',firms,it=>it.phone?`<div class="sub">${esc(it.phone)}</div>`:'')}
+    ${defPanel('firms','Servis firmaları / markalar','Ürünleri gönderdiğiniz servisler. Telefon ve e-posta “Servise durum sor” mesajında kullanılır.','<input class="inp" name="name" id="d-firm-name" placeholder="Firma adı" required><input class="inp" name="phone" id="d-firm-phone" placeholder="Telefon / WhatsApp"><input class="inp" name="email" id="d-firm-email" type="email" placeholder="E-posta">',firms,it=>(it.phone||it.email)?`<div class="sub">${esc([it.phone,it.email].filter(Boolean).join(' · '))}</div>`:'')}
+    ${defPanel('branches','Şubeler','Satıcılar kayıt olurken ve ürün talebi açarken bu listeden seçer.','<input class="inp" name="name" id="d-br-name" placeholder="Şube adı, ör. Ümraniye Merkez" required><input class="inp" name="phone" id="d-br-phone" placeholder="Telefon">',[...S.branches].sort(byName).map(x=>({...x,_used:S.requests.filter(r=>r.fromBranch===x.name||r.toBranch===x.name).length})),it=>it.phone?`<div class="sub">${esc(it.phone)}</div>`:'')}
     ${defPanel('products','Ürünler','',`<input class="inp" name="name" id="d-prod-name" placeholder="Ürün adı" required><select class="inp" name="categoryId" id="d-prod-cat" required>${S.categories.length?optList(S.categories,'',null):'<option value="">Önce kategori ekleyin</option>'}</select><select class="inp" name="firmId" id="d-prod-firm">${firmOpts}</select>`,prods,it=>`<div class="sub">${esc([catName(it.categoryId),firmName(it.firmId)].filter(Boolean).join(' · '))}</div>`)}
     <section class="panel"><div class="panel-h"><h3>Resmi tatiller</h3><span>${upcoming.length} yaklaşan</span><p>İş günü hesabında bu günler sayılmaz. Arife yarım günleri iş günü kabul edilir.</p></div>
       ${S.canWrite?`<form class="add" id="hol-form"><input class="inp" type="date" id="h-date" required style="flex:0 1 160px"><input class="inp" id="h-name" placeholder="Tatil adı" required><button class="btn primary small" type="submit">Ekle</button></form>`:''}
@@ -987,13 +1264,15 @@ function renderLists(){
   $('dl-products').innerHTML=opt(S.products.filter(p=>!cat||p.categoryId===cat));
   const techs=[...new Set(S.tickets.map(t=>t.tech).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'));
   $('dl-techs').innerHTML=techs.map(t=>`<option value="${esc(t)}"></option>`).join('');
+  if(S.branches.length||!branchInfo)$('dl-branches').innerHTML=[...S.branches].sort(byName).map(b=>`<option value="${esc(b.name)}"></option>`).join('');
 }
 
 /* ================= routing ================= */
-const VIEWS=['pano','takvim','musteriler','raporlar','tanimlar'];
+const VIEWS=['pano','talepler','sevkiyat','takvim','musteriler','raporlar','tanimlar'];
 function route(){
   const h=(location.hash||'').replace('#','');
-  S.view=VIEWS.includes(h)?h:'pano';
+  S.view=VIEWS.includes(h)?h:(S.isSeller?'talepler':'pano');
+  if(S.isSeller&&S.view!=='talepler')S.view='talepler';
   for(const v of VIEWS)$('view-'+v).hidden=v!==S.view;
   document.querySelectorAll('.nav a').forEach(a=>{if(a.dataset.view===S.view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
   render();
@@ -1050,17 +1329,21 @@ function openDrawer(t,preset){
   set('f-invno',t?.invoiceNo);set('f-invamt',t?.invoiceAmount);set('f-invdate',t?.invoicedAt);set('f-note',t?.note);set('f-cmt','');
   ['p-name','p-sup','p-exp'].forEach(i=>set(i,''));
   set('f-sent',t?.sentAt);set('f-carrier',t?.carrier);set('f-track',t?.trackNo);set('f-back',t?.backAt);set('f-rcarrier',t?.rCarrier);set('f-rtrack',t?.rTrackNo);set('f-svcno',t?.svcNo);set('f-delivered',t?.deliveredAt);
-  const st0=t?.status;set('f-smstpl',DEF_TPL[st0]?st0:(t&&needsNotify(t)?'servisten_geldi':'servisten_geldi'));smsFill();
+  set('f-result',t?.serviceResult);set('f-qamt',t?.quote?.amount);set('f-qstatus',t?.quote?.status);set('f-qnote',t?.quote?.note);
+  set('f-loan',t?.loaner?.name);set('f-loangiven',t?.loaner?.givenAt);set('f-loanback',t?.loaner?.backAt);
+  $('d-actions').hidden=!t;
+  const st0=t?.status;set('f-smstpl',t&&needsPickup(t)&&!needsNotify(t)?'hatirlatma':t&&t.quote&&t.quote.status==='bekliyor'?'teklif':DEF_TPL[st0]?st0:'servisten_geldi');smsFill();
+  if(t&&!t.publicToken&&S.canWrite)ensureToken(t).then(x=>{if(S.editing&&S.editing.id===x.id){S.editing={...S.editing,publicToken:x.publicToken};if($('f-smstpl').value!=='ozel')smsFill()}});
   $('d-err').textContent='';
   const del=$('d-del');del.hidden=!t||!S.canWrite;del.classList.remove('armed');del.textContent='Kaydı sil';
   [...$('tform').elements].forEach(el=>{if(el.id&&/^(f-|p-)/.test(el.id))el.disabled=!S.canWrite});
   $('d-save').hidden=!S.canWrite;$('part-add').hidden=!S.canWrite;
-  renderLists();renderDrawerDyn();
   $('scrim').hidden=false;$('drawer').hidden=false;
+  renderLists();renderDrawerDyn();
   setTimeout(()=>(t?$('d-close'):$('f-customer')).focus(),40);
 }
 function closeDrawer(){$('drawer').hidden=true;$('scrim').hidden=true;S.editing=null;S.draft=null}
-function formTicket(){return {...(S.editing||{}),customerName:$('f-customer').value.trim(),customerPhone:$('f-phone').value.trim(),productName:$('f-product').value.trim(),firmName:$('f-firm').value.trim(),carrier:$('f-carrier').value,trackNo:$('f-track').value.trim(),no:S.editing?S.editing.no:''}}
+function formTicket(){const qa=$('f-qamt').value;return {...(S.editing||{}),quote:{...((S.editing&&S.editing.quote)||{}),amount:qa===''?null:Number(qa),status:$('f-qstatus').value,note:$('f-qnote').value.trim()},customerName:$('f-customer').value.trim(),customerPhone:$('f-phone').value.trim(),productName:$('f-product').value.trim(),firmName:$('f-firm').value.trim(),carrier:$('f-carrier').value,trackNo:$('f-track').value.trim(),no:S.editing?S.editing.no:''}}
 function smsFill(){const k=$('f-smstpl').value;$('f-smstext').value=k==='ozel'?'':fillTpl(tplText(k),formTicket());smsRefresh()}
 function smsRefresh(){const ph=$('f-phone').value.trim();const txt=$('f-smstext').value;const ok=!!telE164(ph);
   $('sms-to').textContent=ok?telNice(ph):'Telefon girilmemiş';$('sms-to').style.color=ok?'':'var(--bad)';
@@ -1106,6 +1389,8 @@ function renderDrawerDyn(){
   if(sp.deliveredAt)bits.push(`<span>Müşteriye teslim: <b>${esc(fmt(sp.deliveredAt))}</b></span>`);
   $('d-ship').innerHTML=bits.length?`<div class="ship-info">${bits.join('')}</div>`:'<p class="hint" style="margin:0">Servise gönderim tarihini girince serviste geçen süre burada görünür. Garantili ürünlerde yasal tamir süresi 20 iş günüdür.</p>';
   $('c-ship').textContent=a?(a.done?'döndü':'serviste '+a.days+' iş günü'):'';
+  {const qs=$('f-qstatus').value;$('c-quote').textContent=qs==='bekliyor'?'onay bekleniyor':qs==='onaylandi'?'onaylandı':qs==='reddedildi'?'reddedildi':'';
+   $('c-loan').textContent=$('f-loan').value.trim()&&!$('f-loanback').value?'müşteride':$('f-loanback').value?'geri alındı':'';}
   // sms
   $('sec-sms').hidden=!t;
   if(t){const list=t.sms||[];$('c-sms').textContent=list.length?list.length+' mesaj':'';
@@ -1136,7 +1421,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('lightbox').h
 $('f-status').addEventListener('change',()=>{const s=$('f-status').value;if(s==='faturalandi'&&!$('f-invdate').value)$('f-invdate').value=today();if(s==='fatura_talep'&&!$('f-invreq').value)$('f-invreq').value=today();
   if(s==='servise_gonderildi'&&!$('f-sent').value)$('f-sent').value=today();if(s==='servisten_geldi'&&!$('f-back').value)$('f-back').value=today();if(s==='musteriye_teslim'&&!$('f-delivered').value)$('f-delivered').value=today();
   if(DEF_TPL[s]){$('f-smstpl').value=s;smsFill()}renderDrawerDyn()});
-['f-sent','f-back','f-delivered','f-war'].forEach(id=>$(id).addEventListener('input',renderDrawerDyn));
+['f-sent','f-back','f-delivered','f-war','f-qstatus','f-loan','f-loanback'].forEach(id=>$(id).addEventListener('input',renderDrawerDyn));
+$('f-qstatus').addEventListener('change',()=>{if($('f-qstatus').value==='bekliyor'){$('f-smstpl').value='teklif';smsFill()}});
+['f-qamt'].forEach(id=>$(id).addEventListener('change',()=>{if($('f-smstpl').value==='teklif')smsFill()}));
 ['f-customer','f-product','f-track','f-carrier'].forEach(id=>$(id).addEventListener('change',()=>{if($('f-smstpl').value!=='ozel')smsFill()}));
 $('f-cat').addEventListener('change',renderLists);
 $('f-product').addEventListener('change',()=>{
@@ -1223,7 +1510,11 @@ $('tform').addEventListener('submit',async e=>{
       productId,productName:v('f-product'),categoryId:catId,categoryName:S.categories.find(c=>c.id===catId)?.name||'',
       serial:v('f-serial'),tech:v('f-tech'),desc:v('f-desc'),note:v('f-note'),
       invoiceRequestedAt:$('f-invreq').value||null,invoiceNo:v('f-invno'),invoiceAmount:amt===''?null:Number(amt),invoicedAt:$('f-invdate').value||null,
-      sentAt:$('f-sent').value||null,carrier:$('f-carrier').value,trackNo:v('f-track'),backAt:$('f-back').value||null,rCarrier:$('f-rcarrier').value,rTrackNo:v('f-rtrack'),svcNo:v('f-svcno'),deliveredAt:$('f-delivered').value||null,updatedAt:iso()};
+      sentAt:$('f-sent').value||null,carrier:$('f-carrier').value,trackNo:v('f-track'),backAt:$('f-back').value||null,rCarrier:$('f-rcarrier').value,rTrackNo:v('f-rtrack'),svcNo:v('f-svcno'),deliveredAt:$('f-delivered').value||null,updatedAt:iso(),
+      serviceResult:$('f-result').value,
+      quote:(()=>{const qa=$('f-qamt').value;const prev=(old&&old.quote)||{};const qs=$('f-qstatus').value;return {...prev,amount:qa===''?null:Number(qa),status:qs,note:v('f-qnote'),decidedAt:(qs!==prev.status&&(qs==='onaylandi'||qs==='reddedildi'))?today():(prev.decidedAt||null)}})(),
+      loaner:{name:v('f-loan'),givenAt:$('f-loangiven').value||null,backAt:$('f-loanback').value||null}};
+    if(f.loaner.name&&!f.loaner.givenAt)f.loaner.givenAt=today();
     if(status==='servise_gonderildi'&&!f.sentAt)f.sentAt=today();
     if(status==='servisten_geldi'&&!f.backAt)f.backAt=today();
     if(status==='musteriye_teslim'&&!f.deliveredAt)f.deliveredAt=today();
@@ -1237,15 +1528,20 @@ $('tform').addEventListener('submit',async e=>{
       if(f.trackNo&&(old.trackNo||'')!==f.trackNo)log.push(logEntry('Gidiş takip no: '+f.trackNo));
       if(f.rTrackNo&&(old.rTrackNo||'')!==f.rTrackNo)log.push(logEntry('Dönüş takip no: '+f.rTrackNo));
       if(f.svcNo&&(old.svcNo||'')!==f.svcNo)log.push(logEntry('Servis iş emri no: '+f.svcNo));
+      if((old.serviceResult||'')!==f.serviceResult&&f.serviceResult)log.push(logEntry('Servis sonucu: '+RESULT_LBL[f.serviceResult]));
+      if(((old.quote||{}).status||'')!==f.quote.status&&f.quote.status)log.push(logEntry('Onarım onayı: '+({bekliyor:'bekleniyor',onaylandi:'onaylandı',reddedildi:'reddedildi'}[f.quote.status])+(f.quote.amount?' · '+money(f.quote.amount):'')));
+      if(f.loaner.name&&((old.loaner||{}).name||'')!==f.loaner.name)log.push(logEntry('Ödünç ürün verildi: '+f.loaner.name));
+      if(f.loaner.backAt&&!(old.loaner||{}).backAt)log.push(logEntry('Ödünç ürün geri alındı'));
       if(old.dueAt!==f.dueAt)log.push(logEntry('Son tarih: '+fmt(f.dueAt)));
       if(log.length===n0)log.push(logEntry('Kayıt güncellendi'));
       f.log=log.slice(-80);
       await S.db.doc('tickets/'+old.id).update(f);toast(old.no+' kaydedildi');
       if(old.status!==status)setTimeout(()=>smsPrompt({...old,...f},status),50);
+      else if(f.quote.status==='bekliyor'&&((old.quote||{}).status!=='bekliyor'))setTimeout(()=>smsPrompt({...old,...f},'teklif'),50);
     }else{
       const id=S.draft.id;const ref=S.db.doc('tickets/'+id);
       f.no='ARZ-'+opened.slice(2).replace(/-/g,'')+'-'+id.replace(/[^a-z0-9]/gi,'').slice(-4).toUpperCase();
-      f.createdAt=iso();f.createdBy=S.me||null;f.parts=S.draft.parts;f.attachments=S.draft.attachments;f.comments=[];f.sms=[];
+      f.createdAt=iso();f.createdBy=S.me||null;f.parts=S.draft.parts;f.attachments=S.draft.attachments;f.comments=[];f.sms=[];f.publicToken=genId();
       f.log=[logEntry('Kayıt açıldı ('+STMAP[status].t+')')];
       await ref.set(f);toast(f.no+' açıldı · son tarih '+fmtS(f.dueAt));
       setTimeout(()=>smsPrompt({...f,id},status),50);
@@ -1264,7 +1560,7 @@ async function exportXlsx(list,label){
   toast('Excel dosyası hazırlanıyor…');
   try{await loadXLSX()}catch(_){toast('Excel kütüphanesi yüklenemedi, bağlantıyı kontrol edin');return}
   const X=window.XLSX;
-  const rows=list.map(t=>{const s=sla(t);return {'Kayıt No':t.no,'Kayıt Tarihi':t.openedAt,'Fatura Son Tarihi':t.dueAt,'Durum':STMAP[t.status]?.t||t.status,'Süre Durumu':s.txt,'Öncelik':PRI[t.priority||'normal'],'Garanti':WAR[t.warranty]||'','Firma':t.firmName,'Müşteri':t.customerName,'Telefon':t.customerPhone||'','Kategori':t.categoryName,'Ürün':t.productName,'Seri No':t.serial||'','Sorumlu':t.tech||'','Arıza':t.desc||'','Servise Gönderim':t.sentAt||'','Gidiş Kargo':(CARRIER_MAP[t.carrier]||{}).name||'','Gidiş Takip No':t.trackNo||'','Servis İş Emri':t.svcNo||'','Servisten Geliş':t.backAt||'','Dönüş Kargo':(CARRIER_MAP[t.rCarrier]||{}).name||'','Dönüş Takip No':t.rTrackNo||'','Müşteriye Teslim':t.deliveredAt||'','Serviste (iş günü)':svcInfo(t)?svcInfo(t).days:'','SMS':(t.sms||[]).length,'Fatura Talep Tarihi':t.invoiceRequestedAt||'','Fatura No':t.invoiceNo||'','Fatura Tarihi':t.invoicedAt||'','Tutar (TL)':t.invoiceAmount??'','Parça':(t.parts||[]).length,'Ek':(t.attachments||[]).length,'Not':t.note||''}});
+  const rows=list.map(t=>{const s=sla(t);return {'Kayıt No':t.no,'Kayıt Tarihi':t.openedAt,'Fatura Son Tarihi':t.dueAt,'Durum':STMAP[t.status]?.t||t.status,'Süre Durumu':s.txt,'Öncelik':PRI[t.priority||'normal'],'Garanti':WAR[t.warranty]||'','Firma':t.firmName,'Müşteri':t.customerName,'Telefon':t.customerPhone||'','Kategori':t.categoryName,'Ürün':t.productName,'Seri No':t.serial||'','Sorumlu':t.tech||'','Arıza':t.desc||'','Servise Gönderim':t.sentAt||'','Gidiş Kargo':(CARRIER_MAP[t.carrier]||{}).name||'','Gidiş Takip No':t.trackNo||'','Servis İş Emri':t.svcNo||'','Servisten Geliş':t.backAt||'','Dönüş Kargo':(CARRIER_MAP[t.rCarrier]||{}).name||'','Dönüş Takip No':t.rTrackNo||'','Müşteriye Teslim':t.deliveredAt||'','Serviste (iş günü)':svcInfo(t)?svcInfo(t).days:'','SMS':(t.sms||[]).length,'Servis Sonucu':RESULT_LBL[t.serviceResult]||'','Onarım Bedeli':t.quote&&t.quote.amount||'','Müşteri Onayı':({bekliyor:'Bekleniyor',onaylandi:'Onaylandı',reddedildi:'Reddedildi'})[(t.quote||{}).status]||'','Ödünç Ürün':(t.loaner||{}).name||'','Takip Linki':t.publicToken?trackUrl(t):'','Fatura Talep Tarihi':t.invoiceRequestedAt||'','Fatura No':t.invoiceNo||'','Fatura Tarihi':t.invoicedAt||'','Tutar (TL)':t.invoiceAmount??'','Parça':(t.parts||[]).length,'Ek':(t.attachments||[]).length,'Not':t.note||''}});
   const wb=X.utils.book_new();
   const ws=X.utils.json_to_sheet(rows);ws['!cols']=Object.keys(rows[0]).map(k=>({wch:Math.min(40,Math.max(10,k.length+2,...rows.slice(0,200).map(r=>String(r[k]??'').length)))}));
   X.utils.book_append_sheet(wb,ws,'Kayıtlar');
@@ -1382,7 +1678,7 @@ async function call(method,url,body,raw){
   let res;
   try{res=await fetch(url,{method,credentials:'same-origin',headers:raw?raw.headers:(body!==undefined?{'Content-Type':'application/json'}:{}),body:raw?raw.body:(body!==undefined?JSON.stringify(body):undefined)})}
   catch(_){throw {code:'unavailable'}}
-  if(res.status===401){showLogin('Oturumunuz sona erdi, lütfen tekrar giriş yapın.');throw {code:'auth',serverMsg:'Giriş yapmanız gerekiyor.'}}
+  if(res.status===401){showLogin(S.me?'Oturumunuz sona erdi, lütfen tekrar giriş yapın.':'');throw {code:'auth',serverMsg:'Giriş yapmanız gerekiyor.'}}
   let data=null;try{data=await res.json()}catch(_){}
   if(!res.ok){const m={403:'invalid_argument',404:'invalid_argument',400:'invalid_argument',413:'too_large',415:'unsupported_type',429:'rate_limited'};throw {code:m[res.status]||'unavailable',serverMsg:data&&data.error}}
   return data;
@@ -1393,6 +1689,7 @@ function applyChange(coll,id,doc){
   else if(S[coll]){const i=S[coll].findIndex(x=>x.id===id);if(doc){if(i>=0){S[coll]=S[coll].slice();S[coll][i]=doc}else S[coll]=[...S[coll],doc]}else if(i>=0)S[coll]=S[coll].filter(x=>x.id!==id)}
   if(coll==='tickets'&&S.editing&&S.editing.id===id){if(doc){S.editing=doc;renderDrawerDyn()}else{closeDrawer();toast('Kayıt silindi')}}
   if(coll==='settings'&&(S.editing||S.draft))renderDrawerDyn();
+  if(coll==='requests'&&S.rEditing&&S.rEditing.id===id){if(doc){S.rEditing=doc;renderReqDyn()}else closeReq()}
   schedule();
 }
 function docRef(c,id){const u='/api/docs/'+c+'/'+encodeURIComponent(id);return {id,
@@ -1419,14 +1716,16 @@ function connectEvents(){
   es.onerror=()=>{hadError=true;setLive('off');fetch('/api/bootstrap',{credentials:'same-origin'}).then(r=>{if(r.status===401){es.close();showLogin('Oturumunuz sona erdi, lütfen tekrar giriş yapın.')}}).catch(()=>{})};
 }
 function applyRole(){
-  const r=S.meUser&&S.meUser.role;S.canWrite=r!=='viewer';S.isAdmin=r==='admin';
+  const r=S.meUser&&S.meUser.role;S.canWrite=r!=='viewer';S.isAdmin=r==='admin';S.isSeller=r==='satici';
   banner(S.canWrite?'':'Görüntüleme yetkiniz var. Kayıt açmak ve değiştirmek için yöneticiden yetki isteyin.');
   $('me-name').textContent=S.meUser?S.meUser.name:'';
+  document.querySelectorAll('.nav a.staff').forEach(a=>{a.hidden=S.isSeller});
+  $('btn-full').hidden=S.isSeller;
 }
 async function loadAll(silent){
   try{
     const d=await call('GET','/api/bootstrap');
-    S.me=d.me.id;S.meUser=d.me;S.users=d.users;
+    S.me=d.me.id;S.meUser=d.me;S.users=d.users;S.pushKey=d.push||null;S.mailEnabled=!!d.mailEnabled;
     for(const c of COLS)S[c]=d.data[c]||[];
     S.tickets=S.tickets.map(fixT);
     const st=(d.data.settings||[]).find(x=>x.id==='main');S.settings={...DEF_SETTINGS,...(st||{})};delete S.settings.id;rebuildHol();
@@ -1434,33 +1733,76 @@ async function loadAll(silent){
     S.db=DB;S.assets=ASSETS;applyRole();
     if(S.editing){const f=S.tickets.find(t=>t.id===S.editing.id);if(f){S.editing=f;renderDrawerDyn()}else closeDrawer()}
     $('login').hidden=true;$('app').hidden=false;
-    render();
-    if(!silent)connectEvents();
+    route();
+    if(!silent){connectEvents();afterLogin()}
   }catch(e){if(e.code!=='auth'){banner('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip sayfayı yenileyin.',true)}}
 }
-function showLogin(msg){if(es){es.close();es=null}$('login').hidden=false;$('app').hidden=true;closeDrawer();$('l-msg').textContent=msg||'';setTimeout(()=>$('l-user').focus(),30)}
+function lmode(m,msg,ok){document.querySelectorAll('.lmode').forEach(f=>f.hidden=f.dataset.mode!==m);
+  document.querySelectorAll('.ltabs [data-lmode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.lmode===m)));
+  $('l-msg').className='lnote'+(ok?' ok':'');$('l-msg').textContent=msg||'';
+  if(m==='register')loadBranchList();
+  setTimeout(()=>{const f=document.querySelector('.lmode:not([hidden]) input');if(f)f.focus()},30)}
+function showLogin(msg,ok){if(es){es.close();es=null}$('login').hidden=false;$('app').hidden=true;closeDrawer();if(typeof closeReq==='function')closeReq();lmode('login',msg,ok)}
+let branchInfo=null;
+async function loadBranchList(){try{if(!branchInfo){const r=await fetch('/api/public/info');branchInfo=await r.json()}
+  $('dl-branches').innerHTML=(branchInfo.branches||[]).map(b=>`<option value="${esc(b)}"></option>`).join('')}catch(_){}}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-lmode]');if(b&&b.closest('#login'))lmode(b.dataset.lmode)});
+function pendingNote(email,msg){const n=$('l-msg');n.className='lnote';n.innerHTML='';const p=document.createElement('div');p.textContent=msg;n.appendChild(p);
+  const b=document.createElement('button');b.type='button';b.className='btn small';b.textContent='Doğrulama e-postasını tekrar gönder';
+  b.onclick=async()=>{b.disabled=true;try{const r=await fetch('/api/resend-verification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const d=await r.json().catch(()=>({}));
+    p.textContent=r.ok?(d.mailSent?'Doğrulama e-postası tekrar gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin.':'E-posta şu an gönderilemedi. Yöneticiniz hesabınızı elle onaylayabilir.'):(d.error||'Gönderilemedi');n.className='lnote'+(r.ok&&d.mailSent?' ok':'')}catch(_){p.textContent='Sunucuya ulaşılamadı'}finally{b.disabled=false}};
+  n.appendChild(b)}
 $('lform').addEventListener('submit',async e=>{e.preventDefault();const b=$('l-btn');b.disabled=true;$('l-msg').textContent='';
   try{const r=await fetch('/api/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('l-user').value,password:$('l-pass').value})});
     const d=await r.json().catch(()=>({}));
-    if(!r.ok){$('l-msg').textContent=d.error||'Giriş yapılamadı';return}
+    if(!r.ok){if(d.pending)pendingNote(d.email,d.error);else{$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Giriş yapılamadı'}return}
     $('l-pass').value='';await loadAll();
-  }catch(_){$('l-msg').textContent='Sunucuya ulaşılamadı. Sunucu uykudaysa açılması bir dakika sürebilir, tekrar deneyin.'}finally{b.disabled=false}});
+  }catch(_){$('l-msg').className='lnote';$('l-msg').textContent='Sunucuya ulaşılamadı. Sunucu uykudaysa açılması bir dakika sürebilir, tekrar deneyin.'}finally{b.disabled=false}});
+$('regform').addEventListener('submit',async e=>{e.preventDefault();const b=$('g-btn');b.disabled=true;$('l-msg').textContent='';
+  const email=$('g-email').value.trim();
+  try{const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('g-name').value,email,phone:$('g-phone').value,branch:$('g-branch').value,password:$('g-pass').value})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Kayıt yapılamadı';return}
+    $('regform').reset();lmode('login');$('l-user').value=email;
+    if(d.mailSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. '+email+' adresine doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra giriş yapabilirsiniz.'}
+    else pendingNote(email,'Kaydınız alındı ancak doğrulama e-postası şu an gönderilemedi. Yöneticiniz hesabınızı onaylayınca giriş yapabilirsiniz.');
+  }catch(_){$('l-msg').className='lnote';$('l-msg').textContent='Sunucuya ulaşılamadı, tekrar deneyin.'}finally{b.disabled=false}});
+$('fgform').addEventListener('submit',async e=>{e.preventDefault();
+  try{const r=await fetch('/api/forgot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('f-email').value})});const d=await r.json().catch(()=>({}));
+    if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Gönderilemedi';return}
+    lmode('login','Bu e-posta ile bir hesap varsa şifre sıfırlama bağlantısı gönderildi. Gelen kutunuzu kontrol edin.',true)}catch(_){$('l-msg').textContent='Sunucuya ulaşılamadı'}});
+let resetToken=null;
+$('rsform').addEventListener('submit',async e=>{e.preventDefault();
+  try{const r=await fetch('/api/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:resetToken,password:$('x-pass').value})});const d=await r.json().catch(()=>({}));
+    if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Şifre kaydedilemedi';return}
+    lmode('login','Yeni şifreniz kaydedildi, giriş yapabilirsiniz.',true)}catch(_){$('l-msg').textContent='Sunucuya ulaşılamadı'}});
 $('btn-logout').onclick=async()=>{try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'})}catch(_){}showLogin('Çıkış yapıldı.')};
-$('btn-pw').onclick=()=>{$('pw-modal').hidden=false;$('pw-msg').textContent='';$('pw-cur').value='';$('pw-new').value='';$('pw-cur').focus()};
+$('btn-pw').onclick=()=>{const u=S.meUser||{};$('pw-modal').hidden=false;$('pw-msg').textContent='';$('pw-cur').value='';$('pw-new').value='';
+  $('pf-name').value=u.name||'';$('pf-phone').value=u.phone||'';$('pf-branch').value=u.branch||'';$('pf-email').value=u.email||'';$('pf-email').disabled=S.isSeller;
+  refreshPush();installHint();$('pf-name').focus()};
+$('pf-form').addEventListener('submit',async e=>{e.preventDefault();
+  try{const u=await call('PATCH','/api/me',{name:$('pf-name').value,phone:$('pf-phone').value,branch:$('pf-branch').value,email:S.isSeller?undefined:$('pf-email').value});S.meUser={...S.meUser,...u};applyRole();toast('Bilgileriniz kaydedildi')}catch(err){$('pw-msg').textContent=errMsg(err)}});
 $('pw-cancel').onclick=()=>{$('pw-modal').hidden=true};
 $('pw-form').addEventListener('submit',async e=>{e.preventDefault();
   try{await call('POST','/api/me/password',{current:$('pw-cur').value,next:$('pw-new').value});$('pw-modal').hidden=true;toast('Şifreniz değiştirildi')}catch(err){$('pw-msg').textContent=errMsg(err)}});
 
 /* users admin */
+const ROLE_LBL={admin:'Yönetici',user:'Personel',satici:'Satıcı (sadece talepler)',viewer:'Sadece görüntüler'};
 function usersPanel(){
   if(!S.isAdmin)return '';
-  const roleSel=(id,v)=>`<select class="inp" data-urole="${esc(id)}" ${id===S.me?'disabled':''}>${[['admin','Yönetici'],['user','Kullanıcı'],['viewer','Sadece görüntüler']].map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>`;
-  return `<section class="panel"><div class="panel-h"><h3>Kullanıcılar</h3><span>${S.users.length}</span><p>Herkes kendi kullanıcı adı ve şifresiyle girer. Kullanıcı kayıt açıp değiştirebilir; yönetici ayrıca kullanıcıları yönetir.</p></div>
-    <form class="add" id="u-form"><input class="inp" id="u-username" placeholder="Kullanıcı adı" required autocomplete="off"><input class="inp" id="u-name" placeholder="Ad soyad" required><input class="inp" id="u-pass" placeholder="Şifre (en az 6)" required autocomplete="new-password"><select class="inp" id="u-role"><option value="user">Kullanıcı</option><option value="admin">Yönetici</option><option value="viewer">Sadece görüntüler</option></select><button class="btn primary small" type="submit">Kullanıcı ekle</button></form>
-    <ul class="list">${[...S.users].sort(byName).map(u=>`<li><div style="flex:1;min-width:0"><div class="nm">${esc(u.name)}${u.id===S.me?' (siz)':''}</div><div class="sub">${esc(u.username)}</div></div>${roleSel(u.id,u.role)}${u.id===S.me?'':`<button class="btn small" type="button" data-upass="${esc(u.id)}">Şifre sıfırla</button><button class="btn small danger" type="button" data-udel="${esc(u.id)}">Sil</button>`}</li>`).join('')}</ul></section>`;
+  const roleSel=(id,v)=>`<select class="inp" data-urole="${esc(id)}" ${id===S.me?'disabled':''}>${Object.entries(ROLE_LBL).map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>`;
+  const pend=S.users.filter(u=>u.status==='pending');
+  const others=S.users.filter(u=>u.status!=='pending');
+  const row=u=>`<li><div style="flex:1;min-width:0"><div class="nm">${esc(u.name)}${u.id===S.me?' (siz)':''}${u.status==='disabled'?' · <span style="color:var(--bad)">devre dışı</span>':''}</div><div class="sub">${esc([u.email||u.username,u.branch,u.phone].filter(Boolean).join(' · '))}</div></div>${u.status==='pending'?`<button class="btn small primary" type="button" data-uapprove="${esc(u.id)}">Onayla</button>`:roleSel(u.id,u.role)}${u.id===S.me?'':`<button class="btn small" type="button" data-upass="${esc(u.id)}">Şifre</button><button class="btn small danger" type="button" data-udel="${esc(u.id)}">Sil</button>`}</li>`;
+  return `<section class="panel"><div class="panel-h"><h3>Kullanıcılar</h3><span>${S.users.length}</span><p>Satıcılar giriş ekranından kendileri kayıt olur ve e-postalarını doğrular; sadece Ürün Talepleri sayfasını görürler. Personel ve yöneticileri buradan ekleyin.</p></div>
+    ${pend.length?`<div style="padding:10px 14px;background:var(--warn-soft);border-bottom:1px solid var(--line-2);font-size:.88rem"><b>${pend.length} kayıt e-posta doğrulaması bekliyor.</b> E-posta ulaşmadıysa “Onayla” ile hesabı siz açabilirsiniz.</div><ul class="list">${pend.map(row).join('')}</ul>`:''}
+    <form class="add" id="u-form"><input class="inp" id="u-username" placeholder="Kullanıcı adı" required autocomplete="off"><input class="inp" id="u-name" placeholder="Ad soyad" required><input class="inp" id="u-email" type="email" placeholder="E-posta (isteğe bağlı)"><input class="inp" id="u-branch" list="dl-branches" placeholder="Şube"><input class="inp" id="u-pass" placeholder="Şifre (en az 6)" required autocomplete="new-password"><select class="inp" id="u-role">${Object.entries(ROLE_LBL).map(([k,l])=>`<option value="${k}" ${k==='user'?'selected':''}>${l}</option>`).join('')}</select><button class="btn primary small" type="submit">Kullanıcı ekle</button></form>
+    <ul class="list">${[...others].sort(byName).map(row).join('')}</ul></section>`;
 }
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-uapprove]');if(!b)return;b.disabled=true;
+  try{await call('PATCH','/api/users/'+b.dataset.uapprove,{status:'active'});toast('Hesap onaylandı')}catch(err){toast(errMsg(err));b.disabled=false}});
 document.addEventListener('submit',async e=>{if(e.target.id!=='u-form')return;e.preventDefault();
-  try{await call('POST','/api/users',{username:$('u-username').value,name:$('u-name').value,password:$('u-pass').value,role:$('u-role').value});toast('Kullanıcı eklendi');['u-username','u-name','u-pass'].forEach(i=>$(i).value='')}catch(err){toast(errMsg(err))}});
+  try{await call('POST','/api/users',{username:$('u-username').value,name:$('u-name').value,email:$('u-email').value,branch:$('u-branch').value,password:$('u-pass').value,role:$('u-role').value});toast('Kullanıcı eklendi');['u-username','u-name','u-email','u-branch','u-pass'].forEach(i=>$(i).value='')}catch(err){toast(errMsg(err))}});
 document.addEventListener('change',async e=>{const id=e.target.dataset&&e.target.dataset.urole;if(!id)return;
   try{await call('PATCH','/api/users/'+id,{role:e.target.value});toast('Yetki güncellendi')}catch(err){toast(errMsg(err));schedule()}});
 document.addEventListener('click',async e=>{
@@ -1474,6 +1816,324 @@ document.addEventListener('click',async e=>{
   if(db){if(!db.classList.contains('armed')){db.classList.add('armed');db.textContent='Emin misiniz?';setTimeout(()=>{if(db.isConnected){db.classList.remove('armed');db.textContent='Sil'}},4000);return}
     try{await call('DELETE','/api/users/'+db.dataset.udel);toast('Kullanıcı silindi')}catch(err){toast(errMsg(err))}}
 });
+
+/* ================= Ürün Talepleri ================= */
+const REQ_ST=[
+  {k:'yeni',t:'Yeni Talep',d:'Satıcıdan geldi, işlem bekliyor'},
+  {k:'talep_edildi',t:'Talep Edildi',d:'Diğer şubeye iletildi · satıcıya e-posta gider'},
+  {k:'yolda',t:'Yolda',d:'Şubeden çıktı'},
+  {k:'geldi',t:'Şubeye Geldi',d:'Ürün ulaştı · satıcıya e-posta gider'},
+  {k:'tamamlandi',t:'Tamamlandı',d:'Müşteriye / mağazaya teslim'},
+  {k:'iptal',t:'Karşılanamadı',d:'Stokta yok / iptal'}
+];
+const REQ_MAP=Object.fromEntries(REQ_ST.map(s=>[s.k,s]));
+const MAIL_ST=new Set(['talep_edildi','yolda','geldi','iptal']);
+const ARROW='<svg viewBox="0 0 24 24"><path d="M4 12h15M14 6l6 6-6 6"/></svg>';
+function ago(isoS){if(!isoS)return '';const d=diff(isoS.slice(0,10),today());return d<=0?'bugün':d===1?'dün':d+' gün önce'}
+function reqFiltered(){const q=norm(S.rq);return S.requests.filter(r=>{
+  if(S.rFrom&&r.fromBranch!==S.rFrom)return false;
+  if(S.rPurpose&&r.purpose!==S.rPurpose)return false;
+  if(S.rQuick==='mine'&&r.requesterId!==S.me)return false;
+  if(S.rQuick==='acil'&&r.priority!=='acil')return false;
+  if(S.rQuick==='gecikmis'&&!(r.neededBy&&r.neededBy<today()&&!['tamamlandi','iptal'].includes(r.status)))return false;
+  if(q&&!norm([r.no,r.productName,r.productCode,r.customerName,r.requesterName,r.fromBranch,r.toBranch,r.note].join(' ')).includes(q))return false;
+  return true})}
+function rcardHTML(r){
+  const i=REQ_ST.findIndex(x=>x.k===r.status);const next=REQ_ST[i+1];const canMove=!S.isSeller&&S.canWrite&&next&&r.status!=='iptal'&&r.status!=='tamamlandi';
+  const late=r.neededBy&&r.neededBy<today()&&!['tamamlandi','iptal'].includes(r.status);
+  return `<article class="rcard" data-rid="${esc(r.id)}" draggable="${!S.isSeller&&S.canWrite}" tabindex="0">
+    <div class="r-top"><span class="r-no">${esc(r.no||'')}</span><span class="r-purpose ${r.purpose==='musteri'?'musteri':'magaza'}">${r.purpose==='musteri'?'MÜŞTERİ İÇİN':'MAĞAZA İÇİN'}</span></div>
+    <div class="r-code">${esc(r.productCode||'Kod yok')}${Number(r.qty)>1?`<span class="r-qty">×${esc(r.qty)}</span>`:''}</div>
+    <h4>${esc(r.productName||'')}</h4>
+    <div class="r-route"><b>${esc(r.fromBranch||'—')}</b>${ARROW}<b>${esc(r.toBranch||'Şube belirtilmedi')}</b></div>
+    ${r.purpose==='musteri'&&r.customerName?`<div class="r-cust">Müşteri: ${esc(r.customerName)}</div>`:''}
+    ${r.status==='iptal'&&r.cancelReason?`<div class="r-cust" style="color:var(--bad)">${esc(r.cancelReason)}</div>`:''}
+    <div class="r-foot">${r.priority==='acil'?'<span class="acil">ACİL</span>':''}<span>${esc(S.isSeller?ago(r.createdAt):(r.requesterName||''))}</span>${!S.isSeller?`<span>${esc(ago(r.createdAt))}</span>`:''}${r.neededBy?`<span class="${late?'late':''}">${late?'Gecikti · ':'Son '}${esc(fmtS(r.neededBy))}</span>`:''}
+    ${canMove?`<button class="mv" type="button" data-rmove="${next.k}">${esc(next.t)} →</button>`:''}</div>
+  </article>`;
+}
+let reqBuilt=false;
+function renderReq(){
+  const v=$('view-talepler');
+  if(!reqBuilt){v.innerHTML='<div id="rtb"></div><div id="rmsg"></div><div class="rboard" id="rboard"></div>';reqBuilt=true}
+  const all=S.requests;const cnt={yeni:all.filter(r=>r.status==='yeni').length,mine:all.filter(r=>r.requesterId===S.me).length,acil:all.filter(r=>r.priority==='acil'&&!['tamamlandi','iptal'].includes(r.status)).length,gec:all.filter(r=>r.neededBy&&r.neededBy<today()&&!['tamamlandi','iptal'].includes(r.status)).length};
+  const q=(k,l,n,c)=>`<button type="button" class="qchip ${c||''}" data-rquick="${k}" aria-pressed="${S.rQuick===k}">${l} <b>${n}</b></button>`;
+  const branches=[...new Set([...S.branches.map(b=>b.name),...all.map(r=>r.fromBranch)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'));
+  keepFocus('rq',()=>{$('rtb').innerHTML=`<div class="toolbar"><h1>Ürün Talepleri</h1>
+    <div class="qchips">${S.isSeller?q('','Taleplerim',all.length):q('','Tümü',all.length)+q('mine','Benim açtıklarım',cnt.mine)}${q('acil','Acil',cnt.acil,cnt.acil?'bad':'')}${q('gecikmis','Gecikmiş',cnt.gec,cnt.gec?'bad':'')}</div>
+    <span class="sp"></span>
+    ${S.isSeller?'':`<button class="btn" type="button" data-act="rxlsx"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel</button>`}
+    <button class="btn primary" type="button" data-act="rnew" ${S.canWrite?'':'disabled'}>+ Yeni ürün talebi</button></div>
+    <div class="toolbar"><input class="inp search" id="rq" type="search" placeholder="Ürün adı, kod, müşteri, satıcı ara…" value="${esc(S.rq)}" aria-label="Talep ara">
+    <select class="inp" id="rf-from" aria-label="Talep edilen şube"><option value="">Tüm şubeler</option>${branches.map(b=>`<option ${S.rFrom===b?'selected':''}>${esc(b)}</option>`).join('')}</select>
+    <select class="inp" id="rf-purpose" aria-label="Kimin için"><option value="">Müşteri + mağaza</option><option value="musteri" ${S.rPurpose==='musteri'?'selected':''}>Müşteri için</option><option value="magaza" ${S.rPurpose==='magaza'?'selected':''}>Mağaza için</option></select>
+    ${S.isSeller?`<span class="req-hint">Talebinizin durumu değiştikçe ${esc((S.meUser&&S.meUser.email)||'e-posta adresinize')} bilgi gönderilir.</span>`:''}</div>`});
+  const list=reqFiltered();
+  $('rmsg').innerHTML=S.loaded.requests&&!all.length?`<div class="empty-hero"><div><h2>Henüz ürün talebi yok</h2><p>${S.isSeller?'Başka bir şubeden istemek istediğiniz ürünün adını ve kodunu girin, müşteri için mi mağaza için mi olduğunu seçin. Talep yöneticinin panosuna düşer; diğer şubeye iletildiğinde size e-posta gelir.':'Satıcılar giriş ekranından kayıt olup ürün talebi açtığında talepler burada “Yeni Talep” sütununa düşer. Kartı “Talep Edildi”ye taşıdığınızda satıcıya otomatik e-posta gider.'}</p></div><button class="btn primary" type="button" data-act="rnew" style="background:#B7791F;border-color:#B7791F">+ Yeni ürün talebi</button></div>`:'';
+  $('rboard').innerHTML=REQ_ST.map(st=>{
+    const items=list.filter(r=>(r.status||'yeni')===st.k).sort((a,b)=>((b.priority==='acil')-(a.priority==='acil'))||String(st.k==='yeni'?a.createdAt:b.updatedAt||'').localeCompare(String(st.k==='yeni'?b.createdAt:a.updatedAt||'')));
+    return `<section class="rcol" data-rstatus="${st.k}"><div class="rcol-h"><div class="row"><h3>${st.t}</h3><span class="n">${items.length}</span></div><p>${st.d}</p></div><div class="rcol-b">${items.length?items.map(rcardHTML).join(''):`<div class="r-empty">${!S.isSeller&&S.canWrite?'Kartı buraya sürükleyin':'Talep yok'}</div>`}</div></section>`}).join('');
+}
+function keepFocus(id,fn){const a=document.activeElement;const is=a&&a.id===id;const c=is?a.selectionStart:0;fn();if(is){const x=$(id);if(x){x.focus();try{x.setSelectionRange(c,c)}catch(_){}}}}
+function openReq(r){
+  S.rEditing=r||null;
+  $('r-status').innerHTML=REQ_ST.map(s=>`<option value="${s.k}">${s.t}</option>`).join('');
+  const set=(id,v)=>{$(id).value=v??''};
+  set('r-product',r?.productName);set('r-code',r?.productCode);set('r-qty',r?.qty||1);set('r-from',r?.fromBranch);set('r-customer',r?.customerName);set('r-cphone',r?.customerPhone);
+  set('r-needed',r?.neededBy);set('r-pri',r?.priority||'normal');set('r-note',r?.note);set('r-status',r?.status||'yeni');set('r-cancel',r?.cancelReason);
+  $('r-pm').checked=(r?.purpose||'musteri')==='musteri';$('r-ps').checked=r?.purpose==='magaza';
+  $('r-title').textContent=r?(r.productName||'Ürün talebi'):'Yeni ürün talebi';$('r-no').textContent=r?r.no||'':'';
+  $('r-err').textContent='';
+  $('rscrim').hidden=false;$('rdrawer').hidden=false;
+  renderReqDyn();setTimeout(()=>(r?$('r-close'):$('r-product')).focus(),40);
+}
+function closeReq(){$('rdrawer').hidden=true;$('rscrim').hidden=true;S.rEditing=null}
+function renderReqDyn(){
+  if($('rdrawer').hidden)return;const r=S.rEditing;
+  const own=!r||r.requesterId===S.me;const sellerLocked=S.isSeller&&r&&r.status!=='yeni';
+  const editable=S.canWrite&&(!S.isSeller||!r||(own&&r.status==='yeni'));
+  [...$('rform-req').elements].forEach(el=>{if(el.id&&el.id.startsWith('r-')||el.name==='r-purpose')el.disabled=!editable});
+  $('r-staff').hidden=S.isSeller||!r;
+  $('r-status').disabled=!S.canWrite||S.isSeller;$('r-cancel').disabled=!S.canWrite||S.isSeller;
+  $('r-cancelrow').hidden=$('r-status').value!=='iptal';
+  $('r-custrow').hidden=!$('r-pm').checked;
+  $('r-pill').innerHTML=r?`<span class="pill"><span class="dot" style="background:#C9962B"></span>${esc(REQ_MAP[r.status]?.t||'')}</span>`:'';
+  $('r-save').hidden=!editable&&!(S.canWrite&&!S.isSeller);$('r-save').textContent=r?'Kaydet':'Talebi gönder';
+  $('r-del').hidden=!r||!S.canWrite||(S.isSeller&&!(own&&r.status==='yeni'));
+  const st=$('r-status').value;
+  $('r-mailhint').textContent=r&&MAIL_ST.has(st)&&st!==r.status?(r.requesterEmail?`Kaydedince ${r.requesterEmail} adresine “${REQ_MAP[st].t}” e-postası gönderilir.`:'Satıcının e-posta adresi kayıtlı değil, e-posta gönderilmeyecek.'):'';
+  $('r-banner').innerHTML=sellerLocked?`Bu talep işleme alındı (<b>${esc(REQ_MAP[r.status]?.t||'')}</b>), artık değiştirilemez. Durum değiştikçe e-posta ile bilgilendirilirsiniz.`:'';
+  let info='';
+  if(r){const idx=REQ_ST.findIndex(x=>x.k===r.status);
+    info+=`<div class="sec-h"><h3>Talep bilgisi</h3></div><ul class="tline">${REQ_ST.filter(x=>x.k!=='iptal').map((x,i)=>`<li class="${r.status==='iptal'?'':i<idx?'done':i===idx?'cur':''}">${esc(x.t)}</li>`).join('')}${r.status==='iptal'?'<li class="cur" style="background:var(--bad)">Karşılanamadı</li>':''}</ul>
+      <p class="hint" style="margin:0">Talep eden: <b>${esc(r.requesterName||'—')}</b>${r.toBranch?' · '+esc(r.toBranch):''}${r.requesterEmail?' · '+esc(r.requesterEmail):''} · ${esc(fmt((r.createdAt||'').slice(0,10)))}</p>`;
+    const ml=r.mailLog||[];if(ml.length&&!S.isSeller)info+=`<ul class="log">${[...ml].reverse().map(l=>`<li><time>${esc(l.at)}</time>${esc(l.text)}</li>`).join('')}</ul>`;
+    const lg=r.log||[];if(lg.length)info+=`<ul class="log">${[...lg].reverse().map(l=>`<li><time>${esc(l.at)}</time>${esc(l.text)}${l.by?` · <b>${esc(nameOf(l.by))}</b>`:''}</li>`).join('')}</ul>`}
+  $('r-info').innerHTML=info;$('r-info').hidden=!info;
+}
+['r-pm','r-ps'].forEach(id=>$(id).addEventListener('change',renderReqDyn));
+$('r-status').addEventListener('change',renderReqDyn);
+$('r-close').onclick=closeReq;$('r-cancelbtn').onclick=closeReq;$('rscrim').onclick=closeReq;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('rdrawer').hidden)closeReq()});
+$('r-code').addEventListener('blur',()=>{$('r-code').value=$('r-code').value.trim().toUpperCase()});
+$('rform-req').addEventListener('submit',async e=>{
+  e.preventDefault();const r=S.rEditing;const v=id=>$(id).value.trim();
+  const purpose=$('r-pm').checked?'musteri':'magaza';
+  if(!v('r-product')||!v('r-code')||!v('r-from')){$('r-err').textContent='Ürün adı, ürün kodu ve şube zorunlu.';return}
+  if(purpose==='musteri'&&!v('r-customer')){$('r-err').textContent='Müşteri için talepte müşteri adını yazın.';return}
+  const body={productName:v('r-product'),productCode:v('r-code').toUpperCase(),qty:Math.max(1,Number(v('r-qty'))||1),fromBranch:v('r-from'),purpose,
+    customerName:purpose==='musteri'?v('r-customer'):'',customerPhone:purpose==='musteri'?v('r-cphone'):'',neededBy:$('r-needed').value||null,priority:$('r-pri').value,note:v('r-note'),updatedAt:iso()};
+  const b=$('r-save');b.disabled=true;$('r-err').textContent='';
+  try{
+    if(r){
+      const st=$('r-status').value;const log=[...(r.log||[])];
+      if(!S.isSeller&&st!==r.status){body.status=st;log.push(logEntry('Durum: '+REQ_MAP[st].t));if(st==='iptal')body.cancelReason=v('r-cancel')}
+      else if(!S.isSeller&&st==='iptal')body.cancelReason=v('r-cancel');
+      if(log.length===(r.log||[]).length)log.push(logEntry('Talep güncellendi'));
+      body.log=log.slice(-60);
+      await S.db.doc('requests/'+r.id).update(body);
+      toast(body.status&&MAIL_ST.has(body.status)?`${r.no} → ${REQ_MAP[body.status].t} · satıcıya e-posta gönderiliyor`:'Talep kaydedildi');
+    }else{
+      const id=genId();body.status='yeni';body.log=[logEntry('Talep açıldı')];
+      await S.db.doc('requests/'+id).set(body);toast('Talebiniz gönderildi');
+    }
+    closeReq();
+  }catch(err){$('r-err').textContent=errMsg(err)}finally{b.disabled=false}
+});
+$('r-del').onclick=async()=>{const b=$('r-del');const r=S.rEditing;if(!r)return;
+  if(!b.classList.contains('armed')){b.classList.add('armed');b.textContent='Silmeyi onayla';setTimeout(()=>{b.classList.remove('armed');b.textContent='Talebi sil'},4000);return}
+  try{await S.db.doc('requests/'+r.id).delete();toast('Talep silindi');closeReq()}catch(err){$('r-err').textContent=errMsg(err)}};
+async function moveReq(id,status){
+  const r=S.requests.find(x=>x.id===id);if(!r||r.status===status||S.busy.has(id))return;
+  if(status==='iptal'){openReq(r);$('r-status').value='iptal';renderReqDyn();$('r-cancel').focus();return}
+  S.busy.add(id);
+  try{await S.db.doc('requests/'+id).update({status,updatedAt:iso(),log:[...(r.log||[]),logEntry('Durum: '+REQ_MAP[status].t)].slice(-60)});
+    toast(`${r.no} → ${REQ_MAP[status].t}${MAIL_ST.has(status)&&r.requesterEmail?' · satıcıya e-posta gönderiliyor':''}`)}
+  catch(e){toast(errMsg(e))}finally{S.busy.delete(id)}
+}
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-act]');
+  if(a&&a.dataset.act==='rnew'){openReq(null);return}
+  if(a&&a.dataset.act==='rxlsx'){exportReqXlsx();return}
+  const q=e.target.closest('[data-rquick]');if(q){S.rQuick=S.rQuick===q.dataset.rquick?'':q.dataset.rquick;schedule();return}
+  const mv=e.target.closest('[data-rmove]');if(mv){e.stopPropagation();moveReq(mv.closest('.rcard').dataset.rid,mv.dataset.rmove);return}
+  const c=e.target.closest('.rcard');if(c){openReq(S.requests.find(x=>x.id===c.dataset.rid));return}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList&&e.target.classList.contains('rcard'))e.target.click()});
+document.addEventListener('input',e=>{if(e.target.id==='rq'){S.rq=e.target.value;schedule()}});
+document.addEventListener('change',e=>{if(e.target.id==='rf-from'){S.rFrom=e.target.value;schedule()}else if(e.target.id==='rf-purpose'){S.rPurpose=e.target.value;schedule()}});
+{const rv=$('view-talepler');
+  rv.addEventListener('dragstart',e=>{const c=e.target.closest('.rcard');if(!c||S.isSeller)return;e.dataTransfer.setData('text/plain',c.dataset.rid);c.classList.add('dragging')});
+  rv.addEventListener('dragend',e=>{const c=e.target.closest('.rcard');if(c)c.classList.remove('dragging');rv.querySelectorAll('.rcol.over').forEach(x=>x.classList.remove('over'))});
+  rv.addEventListener('dragover',e=>{const col=e.target.closest('.rcol');if(!col||S.isSeller)return;e.preventDefault();rv.querySelectorAll('.rcol.over').forEach(x=>{if(x!==col)x.classList.remove('over')});col.classList.add('over')});
+  rv.addEventListener('drop',e=>{const col=e.target.closest('.rcol');if(!col)return;e.preventDefault();col.classList.remove('over');const id=e.dataTransfer.getData('text/plain');if(id)moveReq(id,col.dataset.rstatus)});}
+async function exportReqXlsx(){
+  const list=reqFiltered();if(!list.length){toast('Aktarılacak talep yok');return}
+  try{await loadXLSX()}catch(_){toast('Excel kütüphanesi yüklenemedi');return}
+  const X=window.XLSX;const rows=list.map(r=>({'Talep No':r.no,'Tarih':(r.createdAt||'').slice(0,10),'Durum':REQ_MAP[r.status]?.t||r.status,'Ürün':r.productName,'Ürün Kodu':r.productCode,'Adet':r.qty,'Talep Edilen Şube':r.fromBranch,'Talep Eden Şube':r.toBranch||'','Kimin İçin':r.purpose==='musteri'?'Müşteri':'Mağaza','Müşteri':r.customerName||'','Müşteri Telefonu':r.customerPhone||'','Satıcı':r.requesterName||'','Satıcı E-posta':r.requesterEmail||'','Son Tarih':r.neededBy||'','Öncelik':r.priority==='acil'?'Acil':'Normal','Not':r.note||'','Karşılanamama Nedeni':r.cancelReason||''}));
+  const wb=X.utils.book_new();const ws=X.utils.json_to_sheet(rows);ws['!cols']=Object.keys(rows[0]).map(()=>({wch:18}));X.utils.book_append_sheet(wb,ws,'Talepler');
+  const buf=X.write(wb,{bookType:'xlsx',type:'array'});downloadBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'urun-talepleri-'+today()+'.xlsx');
+}
+function downloadBlob(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),8000);toast('Dosya indirildi')}
+
+/* ================= Sevkiyatlar (toplu sevk) ================= */
+function renderShip(){
+  const d=S.shipDraft;const t0=today();
+  const cand=S.tickets.filter(t=>t.status==='teslim_alindi');
+  const firms=[...new Set(cand.map(t=>t.firmName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'));
+  const co='<option value="">Seçin</option>'+CARRIERS.map(c=>`<option value="${c.k}" ${d&&d.carrier===c.k?'selected':''}>${esc(c.name)}</option>`).join('');
+  let builder='';
+  if(d){const items=cand.filter(t=>!d.firm||t.firmName===d.firm);
+    builder=`<section class="panel"><div class="panel-h"><h3>Yeni toplu sevk</h3><p>Aynı servise gidecek ürünleri seçin; hepsine aynı kargo ve takip numarası verilir, durumları “Servise Gönderildi” olur ve koliye konacak liste yazdırılır.</p></div>
+      <div class="body">
+        <div class="grid three"><div class="field"><label for="sh-firm">Servis firması</label><select id="sh-firm"><option value="">Tüm firmalar</option>${firms.map(f=>`<option ${d.firm===f?'selected':''}>${esc(f)}</option>`).join('')}</select></div>
+        <div class="field"><label for="sh-carrier">Kargo</label><select id="sh-carrier">${co}</select></div>
+        <div class="field"><label for="sh-track">Takip no</label><input id="sh-track" value="${esc(d.track||'')}"></div>
+        <div class="field"><label for="sh-date">Gönderim tarihi</label><input id="sh-date" type="date" value="${esc(d.date||t0)}"></div>
+        <div class="field full"><label for="sh-note">Not</label><input id="sh-note" value="${esc(d.note||'')}" placeholder="Koli sayısı, teslim alan kişi…"></div></div>
+        ${items.length?`<div class="ship-pick">${items.map(t=>`<label><input type="checkbox" data-shpick="${esc(t.id)}" ${d.ids.includes(t.id)?'checked':''}><span><b>${esc(t.no)}</b> · ${esc(t.customerName)} · ${esc(t.productName)}<br><span class="sub">${esc(t.firmName||'')}${t.serial?' · Seri '+esc(t.serial):''}</span></span><span class="sub">${esc(fmtS(t.openedAt))}</span></label>`).join('')}</div>`:'<p class="hint" style="margin:0">“Teslim Alındı” durumunda gönderilecek ürün yok.</p>'}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn primary" type="button" data-act="ship-create" ${d.ids.length?'':'disabled'}>${d.ids.length} ürünü sevk et ve listeyi yazdır</button><button class="btn" type="button" data-act="ship-cancel">Vazgeç</button><span class="err" id="sh-err"></span></div>
+      </div></section>`}
+  const ships=[...S.shipments].sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  const html=`<div class="page"><div class="page-h"><h1>Sevkiyatlar</h1>${d?'':`<button class="btn primary" type="button" data-act="ship-new" ${S.canWrite?'':'disabled'}>+ Toplu sevk oluştur</button>`}<p>Servise toplu gönderimler ve sevk listeleri. ${cand.length} ürün gönderilmeyi bekliyor.</p></div>
+    ${builder}
+    <section class="panel"><div class="panel-h"><h3>Gönderilen sevkler</h3><span>${ships.length}</span></div>
+    ${ships.length?`<div class="tbl"><table><thead><tr><th>Sevk no</th><th>Tarih</th><th>Servis firması</th><th>Kargo / takip</th><th class="num">Ürün</th><th>Dönen</th><th></th></tr></thead><tbody>${ships.map(sh=>{const ts=(sh.ticketIds||[]).map(id=>S.tickets.find(t=>t.id===id)).filter(Boolean);const back=ts.filter(t=>t.backAt).length;const c=CARRIER_MAP[sh.carrier];
+      return `<tr><td class="nw"><span class="no">${esc(sh.no)}</span></td><td class="num">${esc(fmtS(sh.date))}</td><td>${esc(sh.firmName||'Karışık')}</td><td>${esc(c?c.name:'—')}${sh.trackNo?' · '+esc(sh.trackNo):''}</td><td class="num">${(sh.ticketIds||[]).length}</td><td>${back}/${ts.length}</td><td class="nw"><button class="btn small" type="button" data-shprint="${esc(sh.id)}">Listeyi yazdır</button>${sh.trackNo?` <button class="btn small" type="button" data-shtrack="${esc(sh.id)}">Takip et</button>`:''}</td></tr>`}).join('')}</tbody></table></div>`:'<div class="none">Henüz toplu sevk yok.</div>'}</section></div>`;
+  $('view-sevkiyat').innerHTML=html;
+}
+function shipRead(){const d=S.shipDraft;if(!d)return;const g=id=>$(id)?$(id).value:'';d.firm=g('sh-firm');d.carrier=g('sh-carrier');d.track=g('sh-track').trim();d.date=g('sh-date')||today();d.note=g('sh-note').trim()}
+document.addEventListener('click',async e=>{
+  const a=e.target.closest('[data-act]');
+  if(a&&a.dataset.act==='ship-new'){S.shipDraft={firm:'',carrier:'',track:'',date:today(),note:'',ids:[]};schedule();return}
+  if(a&&a.dataset.act==='ship-cancel'){S.shipDraft=null;schedule();return}
+  if(a&&a.dataset.act==='ship-create'){shipRead();const d=S.shipDraft;if(!d||!d.ids.length)return;
+    if(!d.carrier){$('sh-err').textContent='Kargo seçin';return}
+    a.disabled=true;
+    try{const id=genId();const ts=d.ids.map(i=>S.tickets.find(t=>t.id===i)).filter(Boolean);
+      const firmNames=[...new Set(ts.map(t=>t.firmName))];
+      const sh={no:'SVK-'+today().slice(2).replace(/-/g,'')+'-'+id.slice(-4).toUpperCase(),firmName:firmNames.length===1?firmNames[0]:'',carrier:d.carrier,trackNo:d.track,date:d.date,note:d.note,ticketIds:ts.map(t=>t.id),createdBy:S.me,createdAt:iso()};
+      await S.db.doc('shipments/'+id).set(sh);
+      for(const t of ts){await S.db.doc('tickets/'+t.id).update({status:'servise_gonderildi',sentAt:t.sentAt||d.date,carrier:d.carrier,trackNo:d.track||t.trackNo||'',shipmentId:id,updatedAt:iso(),log:[...(t.log||[]),logEntry('Toplu sevk ile servise gönderildi: '+sh.no)].slice(-80)})}
+      S.shipDraft=null;toast(sh.no+' oluşturuldu · '+ts.length+' ürün');schedule();printShipment({id,...sh});
+    }catch(err){toast(errMsg(err));a.disabled=false}return}
+  const pr=e.target.closest('[data-shprint]');if(pr){const sh=S.shipments.find(x=>x.id===pr.dataset.shprint);if(sh)printShipment(sh);return}
+  const tr=e.target.closest('[data-shtrack]');if(tr){const sh=S.shipments.find(x=>x.id===tr.dataset.shtrack);const c=sh&&CARRIER_MAP[sh.carrier];if(!sh)return;try{navigator.clipboard.writeText(sh.trackNo).catch(()=>{})}catch(_){}if(c&&c.url)window.open(c.url(encodeURIComponent(sh.trackNo)),'_blank','noopener');toast('Takip numarası kopyalandı');return}
+});
+document.addEventListener('change',e=>{
+  const pk=e.target.dataset&&e.target.dataset.shpick;
+  if(pk&&S.shipDraft){shipRead();const ids=S.shipDraft.ids;if(e.target.checked){if(!ids.includes(pk))ids.push(pk)}else S.shipDraft.ids=ids.filter(x=>x!==pk);schedule();return}
+  if(e.target.id==='sh-firm'&&S.shipDraft){shipRead();S.shipDraft.ids=[];schedule()}
+  else if(['sh-carrier','sh-date'].includes(e.target.id))shipRead();
+});
+document.addEventListener('input',e=>{if(['sh-track','sh-note'].includes(e.target.id))shipRead()});
+
+/* ================= yazdırma: fiş, etiket, sevk listesi ================= */
+let qrP=null;
+function loadQR(){if(window.qrcode)return Promise.resolve();if(qrP)return qrP;qrP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='/vendor/qrcode.js';s.onload=res;s.onerror=()=>{qrP=null;rej()};document.head.appendChild(s)});return qrP}
+function qrSvg(text){const q=window.qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:4,margin:0,scalable:true})}
+function printHTML(html){const pa=$('print-area');pa.innerHTML=html;document.body.classList.add('printing');
+  const imgs=[...pa.querySelectorAll('img')];Promise.all(imgs.map(i=>i.complete?1:new Promise(r=>{i.onload=i.onerror=r}))).then(()=>setTimeout(()=>window.print(),60))}
+window.addEventListener('afterprint',()=>{document.body.classList.remove('printing');$('print-area').innerHTML=''});
+function storeHead(title,no,date){const st=S.settings;return `<header><img src="/icon.svg" alt=""><div><h2>${esc(st.storeName||'Ümraniye Şampiyonları')}</h2><div>${esc(st.storePhone||'')}</div></div><div class="r"><b>${esc(title)}</b><br><span style="font-family:monospace;font-size:13pt">${esc(no)}</span><br>${esc(fmt(date))}</div></header>`}
+async function printReceipt(t){
+  t=await ensureToken(t);await loadQR();const url=trackUrl(t);
+  const kv=(k,v)=>v?`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`:'';
+  printHTML(`<div class="pdoc">${storeHead('Ürün Teslim Fişi',t.no,t.openedAt)}
+    <table class="pkv">${kv('Müşteri',t.customerName)}${kv('Telefon',telNice(t.customerPhone))}${kv('Ürün',t.productName)}${kv('Kategori',t.categoryName)}${kv('Marka / servis',t.firmName)}${kv('Seri / garanti no',t.serial)}${kv('Garanti durumu',WAR[t.warranty]||'')}${kv('Bildirilen arıza',t.desc)}${kv('Ödünç verilen ürün',t.loaner&&t.loaner.name)}${kv('Teslim alan',t.tech)}</table>
+    <div class="qrrow">${qrSvg(url)}<div><b>Ürününüzü takip edin</b><br>Telefonunuzun kamerasıyla kodu okutun veya adresi açın:<br><span style="font-family:monospace;font-size:10pt;word-break:break-all">${esc(url)}</span></div></div>
+    <div class="sigs"><div>${t.signature&&t.signature.fileId?`<img src="/api/files/${esc(t.signature.fileId)}" alt="">`:''}<span>Müşteri imzası${t.signature?' · '+esc(t.signature.at||''):''}</span></div><div><span>Teslim alan (mağaza)</span></div></div>
+    <p class="terms">Bu fiş, ürünün servise gönderilmek üzere mağazamızca teslim alındığını gösterir. Ürünü geri alırken bu fişi veya kayıt numarasını gösteriniz. Garantili ürünlerde azami tamir süresi 20 iş günüdür.</p></div>`);
+}
+async function printLabel(t){await loadQR();const url=location.origin+'/?k='+t.id;
+  printHTML(`<div class="pdoc label">${qrSvg(url)}<div><b>${esc(t.no)}</b><span>${esc(t.customerName||'')}</span><span>${esc(t.productName||'')}</span><span>${esc(t.firmName||'')}</span><span>${esc(fmt(t.openedAt))}</span></div></div>`)}
+function printShipment(sh){const c=CARRIER_MAP[sh.carrier];const ts=(sh.ticketIds||[]).map(id=>S.tickets.find(t=>t.id===id)).filter(Boolean);
+  printHTML(`<div class="pdoc">${storeHead('Servis Sevk Listesi',sh.no,sh.date)}
+    <table class="pkv"><tr><td>Servis firması</td><td>${esc(sh.firmName||[...new Set(ts.map(t=>t.firmName))].join(', '))}</td></tr><tr><td>Kargo</td><td>${esc(c?c.name:'')}${sh.trackNo?' · Takip no: '+esc(sh.trackNo):''}</td></tr><tr><td>Ürün sayısı</td><td>${ts.length}</td></tr>${sh.note?`<tr><td>Not</td><td>${esc(sh.note)}</td></tr>`:''}</table>
+    <table><thead><tr><th>#</th><th>Kayıt no</th><th>Müşteri</th><th>Ürün</th><th>Seri no</th><th>Arıza</th><th>Garanti</th></tr></thead><tbody>${ts.map((t,i)=>`<tr><td>${i+1}</td><td style="font-family:monospace">${esc(t.no)}</td><td>${esc(t.customerName)}</td><td>${esc(t.productName)}</td><td>${esc(t.serial||'')}</td><td>${esc(t.desc||'')}</td><td>${esc(WAR[t.warranty]||'')}</td></tr>`).join('')}</tbody></table>
+    <div class="sigs"><div><span>Teslim eden (mağaza)</span></div><div><span>Teslim alan (servis / kargo)</span></div></div></div>`)}
+
+/* ================= kayıt eylemleri ================= */
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-tact]');if(!b||!S.editing)return;const t=S.editing;const act=b.dataset.tact;
+  if(act==='fis')printReceipt(t);
+  else if(act==='etiket')printLabel(t);
+  else if(act==='imza')openSig(t);
+  else if(act==='link'){const x=await ensureToken(t);const url=trackUrl(x);try{await navigator.clipboard.writeText(url);toast('Takip linki kopyalandı')}catch(_){prompt2(url)}}
+  else if(act==='sor')openAsk(t);
+});
+function prompt2(url){toast('Takip linki: '+url)}
+/* imza */
+let sigCtx=null,sigDraw=false,sigDirty=false,sigT=null;
+function openSig(t){sigT=t;const c=$('sig-canvas');sigCtx=c.getContext('2d');sigCtx.fillStyle='#fff';sigCtx.fillRect(0,0,c.width,c.height);sigCtx.lineWidth=4;sigCtx.lineCap='round';sigCtx.lineJoin='round';sigCtx.strokeStyle='#111';sigDirty=false;
+  $('sig-sub').textContent=`${t.no} · ${t.customerName} · ${t.productName}. Müşteri parmağıyla veya fareyle imza atsın.`;$('sig-modal').hidden=false}
+function sigPos(e){const c=$('sig-canvas');const r=c.getBoundingClientRect();return [(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]}
+$('sig-canvas').addEventListener('pointerdown',e=>{sigDraw=true;$('sig-canvas').setPointerCapture(e.pointerId);const [x,y]=sigPos(e);sigCtx.beginPath();sigCtx.moveTo(x,y)});
+$('sig-canvas').addEventListener('pointermove',e=>{if(!sigDraw)return;const [x,y]=sigPos(e);sigCtx.lineTo(x,y);sigCtx.stroke();sigDirty=true});
+['pointerup','pointercancel','pointerleave'].forEach(ev=>$('sig-canvas').addEventListener(ev,()=>{sigDraw=false}));
+$('sig-clear').onclick=()=>{const c=$('sig-canvas');sigCtx.fillStyle='#fff';sigCtx.fillRect(0,0,c.width,c.height);sigDirty=false};
+$('sig-cancel').onclick=()=>{$('sig-modal').hidden=true};
+$('sig-save').onclick=async()=>{if(!sigDirty){toast('Önce imza atılmalı');return}const b=$('sig-save');b.disabled=true;
+  try{const blob=await new Promise(r=>$('sig-canvas').toBlob(r,'image/png'));const file=new File([blob],'imza-'+sigT.no+'.png',{type:'image/png'});
+    const up=await S.assets.upload(file,{type:'image/png'});const cur=S.tickets.find(x=>x.id===sigT.id)||sigT;
+    await S.db.doc('tickets/'+sigT.id).update({signature:{fileId:up.id,at:stamp(),by:S.me},attachments:[...(cur.attachments||[]),{id:up.id,name:file.name,type:'image/png',size:up.sizeBytes,by:S.me,at:stamp()}],log:[...(cur.log||[]),logEntry('Müşteri imzası alındı')].slice(-80),updatedAt:iso()});
+    $('sig-modal').hidden=true;toast('İmza kaydedildi. Teslim fişinde görünecek.')}catch(err){toast(errMsg(err))}finally{b.disabled=false}};
+/* servise durum sor */
+let askT=null;
+function openAsk(t){askT=t;const f=S.firms.find(x=>x.id===t.firmId)||S.firms.find(x=>norm(x.name)===norm(t.firmName))||{};
+  const txt=`Merhaba, ${fmt(t.sentAt||t.openedAt)} tarihinde ${t.firmName||'servisinize'} gönderdiğimiz ${t.productName}${t.serial?' (seri no: '+t.serial+')':''} ürünü için durum bilgisi rica ederiz.${t.svcNo?' İş emri no: '+t.svcNo+'.':''} Müşteri: ${t.customerName}. Kayıt no: ${t.no}. ${S.settings.storeName||''} ${S.settings.storePhone||''}`.replace(/\s+/g,' ').trim();
+  $('ask-text').value=txt;$('ask-to').textContent=[f.phone?'Telefon: '+f.phone:'',f.email?'E-posta: '+f.email:''].filter(Boolean).join(' · ')||'Bu servis firmasının telefonu veya e-postası kayıtlı değil. Tanımlar sayfasından ekleyebilirsiniz.';
+  askLinks(f);$('ask-modal').hidden=false;$('ask-text').focus()}
+function askLinks(f){f=f||S.firms.find(x=>askT&&(x.id===askT.firmId||norm(x.name)===norm(askT.firmName)))||{};const txt=$('ask-text').value;const ph=telE164(f.phone).replace('+','');
+  $('ask-wa').href=ph?`https://wa.me/${ph}?text=${encodeURIComponent(txt)}`:`https://wa.me/?text=${encodeURIComponent(txt)}`;
+  $('ask-sms').href=f.phone?smsHref(f.phone,txt):'#';$('ask-sms').classList.toggle('disabled',!f.phone);
+  $('ask-mail').href=f.email?`mailto:${encodeURIComponent(f.email)}?subject=${encodeURIComponent('Durum bilgisi: '+(askT?askT.no:''))}&body=${encodeURIComponent(txt)}`:'#';$('ask-mail').classList.toggle('disabled',!f.email)}
+$('ask-text').addEventListener('input',()=>askLinks());
+['ask-wa','ask-sms','ask-mail'].forEach(id=>$(id).addEventListener('click',e=>{if($(id).getAttribute('href')==='#'){e.preventDefault();toast('Bu kanal için iletişim bilgisi yok');return}
+  if(askT){const cur=S.tickets.find(x=>x.id===askT.id)||askT;S.db.doc('tickets/'+askT.id).update({lastAskAt:today(),log:[...(cur.log||[]),logEntry('Servise durum soruldu ('+({'ask-wa':'WhatsApp','ask-sms':'SMS','ask-mail':'e-posta'})[id]+')')].slice(-80)}).catch(()=>{})}}));
+$('ask-copy').onclick=async()=>{try{await navigator.clipboard.writeText($('ask-text').value);toast('Mesaj kopyalandı')}catch(_){$('ask-text').select()}};
+$('ask-close').onclick=()=>{$('ask-modal').hidden=true};
+
+/* ================= ayarlar: e-posta ================= */
+document.addEventListener('submit',async e=>{if(e.target.id!=='mail-form')return;e.preventDefault();
+  const w=Number($('m-wait').value);
+  try{await S.db.doc('settings/main').set({...S.settings,reportEmail:$('m-report').value.trim(),requestNotifyEmail:$('m-req').value.trim(),waitDays:w>0?w:3,updatedAt:iso()});toast('E-posta ayarları kaydedildi')}catch(err){toast(errMsg(err))}});
+document.addEventListener('click',async e=>{const a=e.target.closest('[data-act]');if(!a)return;
+  if(a.dataset.act==='report-now'){a.disabled=true;try{const r=await call('POST','/api/report/send');toast(r&&r.ok?'Rapor gönderildi':'Rapor gönderilemedi. Rapor alıcısını kaydettiğinizden emin olun.')}catch(err){toast(errMsg(err))}finally{a.disabled=false}}
+  if(a.dataset.act==='mail-test'){const to=$('m-report').value.trim()||(S.meUser&&S.meUser.email)||'';if(!to){toast('Önce rapor alıcısı e-postasını yazın');return}a.disabled=true;
+    try{const r=await call('POST','/api/mail/test',{to});toast(r&&r.ok?to+' adresine deneme e-postası gönderildi':'E-posta gönderilemedi. Gönderici alan adı doğrulanmamış olabilir.')}catch(err){toast(errMsg(err))}finally{a.disabled=false}}});
+
+/* ================= uygulama olarak yükleme ve bildirimler ================= */
+let installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;$('btn-install').hidden=false});
+window.addEventListener('appinstalled',()=>{installEvt=null;$('btn-install').hidden=true;toast('Uygulama yüklendi')});
+$('btn-install').onclick=async()=>{if(!installEvt){$('btn-pw').click();return}installEvt.prompt();try{await installEvt.userChoice}catch(_){}installEvt=null;$('btn-install').hidden=true};
+const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+function installHint(){$('install-hint').textContent=standalone?'Uygulama ana ekranınızdan açık.':isIOS?'iPhone’da: Safari’de Paylaş düğmesine basıp “Ana Ekrana Ekle”yi seçin. Bildirimler ana ekrandan açılan uygulamada çalışır.':installEvt?'Sol menüdeki “Uygulamayı yükle” ile ana ekrana ekleyebilirsiniz.':'Tarayıcı menüsünden “Ana ekrana ekle / Uygulamayı yükle” ile uygulama gibi kullanabilirsiniz.'}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}
+function b64u(s){const p='='.repeat((4-s.length%4)%4);const b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)))}
+async function refreshPush(){const el=$('push-state');const on=$('push-on'),off=$('push-off'),test=$('push-test');on.hidden=false;off.hidden=true;test.hidden=true;
+  if(!S.pushKey){el.textContent='Bildirimler sunucuda henüz etkin değil.';on.hidden=true;return}
+  if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){el.textContent=isIOS&&!standalone?'iPhone’da bildirim için önce uygulamayı ana ekrana ekleyin, sonra oradan açın.':'Bu tarayıcı bildirimleri desteklemiyor.';on.hidden=true;return}
+  try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();
+    if(sub){el.textContent='Bu cihazda bildirimler açık: yeni talepler, talep durumları, servisten gelen ürünler ve müşteri onayları.';on.hidden=true;off.hidden=false;test.hidden=false}
+    else el.textContent=Notification.permission==='denied'?'Bildirim izni tarayıcı ayarlarından engellenmiş.':'Bu cihazda bildirimler kapalı.'}catch(_){el.textContent='Bildirim durumu okunamadı.'}}
+$('push-on').onclick=async()=>{try{const perm=await Notification.requestPermission();if(perm!=='granted'){toast('Bildirim izni verilmedi');refreshPush();return}
+  const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64u(S.pushKey)});
+  await call('POST','/api/push/subscribe',{subscription:sub.toJSON()});toast('Bildirimler açıldı');refreshPush()}catch(err){toast(err&&err.serverMsg||'Bildirimler açılamadı')}};
+$('push-off').onclick=async()=>{try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub){await call('POST','/api/push/unsubscribe',{endpoint:sub.endpoint});await sub.unsubscribe()}toast('Bildirimler kapatıldı');refreshPush()}catch(_){}};
+$('push-test').onclick=async()=>{try{await call('POST','/api/push/test');toast('Deneme bildirimi gönderildi')}catch(err){toast(errMsg(err))}};
+
+/* ================= giriş sonrası ve bağlantılar ================= */
+function afterLogin(){
+  const p=new URLSearchParams(location.search);const k=p.get('k');
+  if(k&&!S.isSeller){const t=S.tickets.find(x=>x.id===k);if(t){location.hash='pano';setTimeout(()=>openDrawer(t),60)}else toast('Kayıt bulunamadı')}
+  if(k)history.replaceState(null,'',location.pathname+location.hash);
+}
+(function urlParams(){const p=new URLSearchParams(location.search);let clean=false;
+  if(p.has('verified')){clean=true;setTimeout(()=>{if(!$('login').hidden||$('app').hidden)lmode('login',p.get('verified')==='1'?'E-posta adresiniz doğrulandı. Şimdi giriş yapabilirsiniz.':'Doğrulama bağlantısı geçersiz veya süresi dolmuş. Giriş yapmayı deneyin; gerekirse yeni bağlantı isteyin.',p.get('verified')==='1')},400)}
+  if(p.has('reset')){clean=true;resetToken=p.get('reset');setTimeout(()=>{$('login').hidden=false;$('app').hidden=true;lmode('reset')},400)}
+  if(clean)history.replaceState(null,'',location.pathname+location.hash)})();
 
 /* ================= boot ================= */
 route();

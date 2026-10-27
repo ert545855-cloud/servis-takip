@@ -1,6 +1,6 @@
-# Servis Takip Panosu
+# Ümraniye Şampiyonları
 
-Arıza kayıtları ve fatura takibi için anlık çalışan kanban panosu.
+Servis takibi, sevkiyat ve şubeler arası ürün talepleri için anlık çalışan kanban uygulaması. Telefona uygulama olarak eklenebilir.
 
 - **Arayüz:** `public/index.html` — tek HTML dosyası (stil ve kod içinde).
 - **Sunucu:** `server.js` — Node.js + PostgreSQL. Bir ekranda yapılan değişiklik açık olan tüm ekranlara anında gider.
@@ -23,6 +23,10 @@ Arıza kayıtları ve fatura takibi için anlık çalışan kanban panosu.
 | `ADMIN_PASSWORD` | İlk yönetici şifresi (en az 6 karakter) |
 | `ADMIN_NAME` | Yöneticinin görünen adı |
 | `DB_SCHEMA` | *(İsteğe bağlı)* Tabloların tutulacağı şema, varsayılan `servis`. Aynı veritabanını kullanan başka projelere dokunulmaz. |
+| `APP_URL` | Sitenin adresi; e-postalardaki bağlantılar için |
+| `BIRD_API_KEY` | Bird e-posta API anahtarı (kayıt doğrulama, şifre sıfırlama, talep e-postaları, günlük rapor) |
+| `MAIL_FROM` | Gönderen adres. Doğrulanmış alan adı yoksa `onboarding@messagebird.dev` yalnızca Bird çalışma alanı üyelerine ulaşır |
+| `VAPID_PUBLIC` / `VAPID_PRIVATE` / `VAPID_SUBJECT` | Telefon bildirimleri (`npx web-push generate-vapid-keys`) |
 | `SEED_JSON` | *(İsteğe bağlı)* Veritabanı boşken bir kez içe aktarılacak başlangıç verileri |
 
 İlk açılışta tablolar otomatik kurulur ve yönetici hesabı oluşturulur.

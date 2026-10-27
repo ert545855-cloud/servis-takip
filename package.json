@@ -1,7 +1,7 @@
 {
-  "name": "servis-takip",
+  "name": "umraniye-sampiyonlari",
   "version": "1.0.0",
-  "description": "Arıza kayıtları ve fatura takibi için anlık çalışan kanban panosu",
+  "description": "Ümraniye Şampiyonları: servis takibi, sevkiyat ve şubeler arası ürün talepleri",
   "main": "server.js",
   "private": true,
   "scripts": {
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "express": "4.21.2",
-    "pg": "8.13.1"
+    "pg": "8.13.1",
+    "web-push": "3.6.7"
   }
 }
