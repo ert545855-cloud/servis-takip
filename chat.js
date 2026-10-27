@@ -96,7 +96,7 @@ module.exports = function setup(ctx) {
   function canSee(user, evt) { if (evt.type === 'chat' || evt.type === 'typing') return canAccess(user, evt.ch); return null; }
 
   /* ---------------- yardımcılar ---------------- */
-  async function activeUsers() { const { rows } = await pool.query("SELECT id, name, role, branch FROM users WHERE status = 'active' ORDER BY name"); return rows; }
+  async function activeUsers() { const { rows } = await pool.query("SELECT id, name, role, branch, avatar FROM users WHERE status = 'active' ORDER BY name"); return rows; }
   async function visibleChannels(user) { return [...chans.values()].filter(c => audienceOk(user, c.audience)).sort((a, b) => (a.kind === b.kind ? a.position - b.position || a.name.localeCompare(b.name, 'tr') : a.kind === 'text' ? -1 : 1)).map(chanOut); }
   async function msgRows(where, params, limit) {
     const { rows } = await pool.query(`SELECT m.*, u.name AS uname, r.text AS r_text, r.deleted AS r_deleted, ru.name AS r_name
@@ -281,7 +281,17 @@ module.exports = function setup(ctx) {
     const urls = String(process.env.TURN_URLS || '').split(',').map(s => s.trim()).filter(Boolean);
     if (urls.length) base.push({ urls, username: process.env.TURN_USERNAME || '', credential: process.env.TURN_CREDENTIAL || '' });
     const cfId = process.env.CF_TURN_KEY_ID, cfTok = process.env.CF_TURN_API_TOKEN, met = process.env.METERED_TURN_URL;
-    if (!cfId && !met) return base;
+    if (!cfId && !met) {
+      // Ücretsiz Open Relay (metered.ca) statik anahtarıyla kısa süreli TURN kimliği (TURN REST API). Kapatmak için TURN_OPENRELAY=0
+      if (process.env.TURN_OPENRELAY !== '0') {
+        const secret = process.env.TURN_STATIC_SECRET || 'openrelayprojectsecret';
+        const host = process.env.TURN_STATIC_HOST || 'staticauth.openrelay.metered.ca';
+        const username = `${Math.floor(Date.now() / 1000) + 12 * 3600}:umraniye`;
+        const credential = require('crypto').createHmac('sha1', secret).update(username).digest('base64');
+        base.push({ urls: [`turn:${host}:80`, `turn:${host}:80?transport=tcp`, `turn:${host}:443`, `turns:${host}:443?transport=tcp`], username, credential });
+      }
+      return base;
+    }
     if (iceCache.list && Date.now() - iceCache.at < 6 * 3600e3) return [...base, ...iceCache.list];
     try {
       let extra = [];
@@ -315,7 +325,7 @@ module.exports = function setup(ctx) {
   app.post('/api/call/state', json, wrap(auth), (req, res) => {
     const { room, cid } = req.body || {};
     const p = rooms.get(room) && rooms.get(room).get(cid);
-    if (p && p.uid === req.user.id) { p.muted = !!req.body.muted; p.video = !!req.body.video; p.screen = !!req.body.screen; voiceChanged(); }
+    if (p && p.uid === req.user.id) { p.muted = !!req.body.muted; p.deaf = !!req.body.deaf; p.video = !!req.body.video; p.screen = !!req.body.screen; voiceChanged(); }
     res.json({ ok: true });
   });
   app.post('/api/call/signal', express.json({ limit: '200kb' }), wrap(auth), (req, res) => {
@@ -464,6 +474,51 @@ module.exports = function setup(ctx) {
     const lb = {}; for (const r of board.rows) (lb[r.game] = lb[r.game] || []).push({ uid: r.user_id, name: r.name, score: Number(r.best) });
     const wb = {}; for (const r of wins.rows) (wb[r.kind] = wb[r.kind] || []).push({ uid: r.user_id, name: r.name, wins: r.n });
     res.json({ enabled, games: mine.rows.map(gameOut), leaderboard: lb, wins: wb, best: Object.fromEntries(mybest.rows.map(r => [r.game, r.best])) });
+  }));
+  /* lig: dönem içindeki maçlar ve tek kişilik skorlardan puan tablosu */
+  const GNAME = { xox: 'XOX', dorttas: 'Dört Taş', pisti: 'Pişti', okey101: '101 Okey', tavla: 'Tavla', g2048: '2048', yilan: 'Yılan', hafiza: 'Hafıza', adam: 'Adam Asmaca' };
+  app.get('/api/games/league', wrap(auth), wrap(async (req, res) => {
+    const period = ['week', 'month', 'all'].includes(req.query.period) ? req.query.period : 'month';
+    const since = period === 'week' ? "now() - interval '7 days'" : period === 'month' ? "date_trunc('month', now() AT TIME ZONE 'Europe/Istanbul') AT TIME ZONE 'Europe/Istanbul'" : "'epoch'::timestamptz";
+    const [games, solo, users] = await Promise.all([
+      pool.query(`SELECT id, kind, players, winner, state->'result' AS result, updated_at FROM games WHERE status = 'done' AND updated_at >= ${since} ORDER BY updated_at DESC LIMIT 2000`),
+      pool.query(`SELECT game, user_id, max(score)::int AS best FROM game_scores WHERE created_at >= ${since} GROUP BY game, user_id`),
+      activeUsers(),
+    ]);
+    const um = new Map(users.map(u => [u.id, u]));
+    const rows = new Map();
+    const R = uid => { if (!rows.has(uid)) { const u = um.get(uid); rows.set(uid, { uid, name: u ? u.name : 'Silinmiş kullanıcı', avatar: u ? u.avatar : null, points: 0, played: 0, wins: 0, draws: 0, losses: 0, kinds: {}, medals: { g: 0, s: 0, b: 0 }, form: [] }); } return rows.get(uid); };
+    const human = p => p && p.id && !String(p.id).startsWith('bot_') && um.has(p.id);
+    const recent = [];
+    for (const g of games.rows) {
+      const ps = (g.players || []).filter(human);
+      const res2 = g.result || null;
+      if (res2 && Array.isArray(res2.ranking) && res2.ranking.length > 2) {
+        const pts = [5, 3, 1, 0];
+        res2.ranking.forEach((uid, i) => { const p = (g.players || []).find(x => x.id === uid); if (!human(p)) return; const r = R(uid); r.played++; r.points += pts[i] || 0; if (i === 0) { r.wins++; r.kinds[g.kind] = (r.kinds[g.kind] || 0) + 1; r.form.push('G'); } else r.form.push(i === res2.ranking.length - 1 ? 'M' : 'O'); if (i > 0 && i === res2.ranking.length - 1) r.losses++; });
+      } else {
+        for (const p of ps) {
+          const r = R(p.id); r.played++;
+          if (!g.winner) { r.draws++; r.points += 1; r.form.push('B'); }
+          else if (g.winner === p.id) { r.wins++; r.points += 3; r.kinds[g.kind] = (r.kinds[g.kind] || 0) + 1; r.form.push('G'); }
+          else { r.losses++; r.form.push('M'); }
+        }
+      }
+      if (recent.length < 15) recent.push({ id: g.id, kind: g.kind, name: GNAME[g.kind] || g.kind, at: g.updated_at, players: (g.players || []).map(p => ({ id: p.id, name: p.name, bot: !human(p) })), winner: g.winner, ranking: res2 && res2.ranking || null });
+    }
+    const soloBoards = {};
+    for (const r of solo.rows) { if (!um.has(r.user_id)) continue; (soloBoards[r.game] = soloBoards[r.game] || []).push({ uid: r.user_id, name: um.get(r.user_id).name, avatar: um.get(r.user_id).avatar, score: r.best }); }
+    for (const [k, list] of Object.entries(soloBoards)) {
+      list.sort((a, b) => b.score - a.score);
+      list.slice(0, 3).forEach((x, i) => { const r = R(x.uid); r.points += [3, 2, 1][i]; r.medals[['g', 's', 'b'][i]]++; });
+      soloBoards[k] = list.slice(0, 10);
+    }
+    const winBoards = {};
+    for (const r of rows.values()) for (const [k, n] of Object.entries(r.kinds)) (winBoards[k] = winBoards[k] || []).push({ uid: r.uid, name: r.name, avatar: r.avatar, wins: n });
+    for (const k of Object.keys(winBoards)) winBoards[k].sort((a, b) => b.wins - a.wins).splice(10);
+    const list = [...rows.values()].map(r => ({ ...r, form: r.form.slice(0, 5), rate: r.played ? Math.round(r.wins / r.played * 100) : null }))
+      .sort((a, b) => b.points - a.points || b.wins - a.wins || a.name.localeCompare(b.name, 'tr'));
+    res.json({ period, rows: list, recent, solo: soloBoards, wins: winBoards, names: GNAME });
   }));
   app.post('/api/games/score', json, wrap(auth), wrap(gamesOn), wrap(async (req, res) => {
     const { game } = req.body || {}; const score = Math.round(Number((req.body || {}).score));

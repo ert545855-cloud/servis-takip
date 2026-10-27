@@ -79,7 +79,7 @@ function parseCookies(req) {
 const validId = s => typeof s === 'string' && /^[A-Za-z0-9_\-.:@+~]{1,120}$/.test(s);
 const validEmail = s => typeof s === 'string' && /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/.test(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const publicUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, email: u.email || null, branch: u.branch || null, phone: u.phone || null, status: u.status || 'active' });
+const publicUser = u => ({ id: u.id, username: u.username, name: u.name, role: u.role, email: u.email || null, branch: u.branch || null, phone: u.phone || null, status: u.status || 'active', avatar: u.avatar || null });
 const baseUrl = req => APP_URL || `${req.protocol}://${req.get('host')}`;
 function istNow() {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false }).formatToParts(new Date());
@@ -134,6 +134,7 @@ async function migrate() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_expires TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_uq ON users (lower(email)) WHERE email IS NOT NULL;
     CREATE TABLE IF NOT EXISTS sessions (
       token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL);
@@ -247,7 +248,13 @@ function canSee(user, evt) {
 }
 function broadcast(evt) {
   const msg = `data: ${JSON.stringify(evt)}\n\n`;
-  for (const c of clients) { if (!canSee(c.user, evt)) continue; try { c.res.write(msg); } catch { clients.delete(c); } }
+  // satıcılar diğer kullanıcıların sadece ad / şube / fotoğraf bilgisini alır (sohbet ve skor tablosu için)
+  const lite = evt.type === 'user' && evt.user ? `data: ${JSON.stringify({ type: 'user', user: { id: evt.user.id, name: evt.user.name, role: evt.user.role, branch: evt.user.branch || null, avatar: evt.user.avatar || null, status: evt.user.status } })}\n\n` : null;
+  for (const c of clients) {
+    let m = msg;
+    if (!canSee(c.user, evt)) { if (lite && c.user.role === 'satici') m = lite; else continue; }
+    try { c.res.write(m); } catch { clients.delete(c); }
+  }
 }
 setInterval(() => { for (const c of clients) { try { c.res.write(': ping\n\n'); } catch { clients.delete(c); } } }, 25000);
 
@@ -517,12 +524,29 @@ app.patch('/api/me', express.json({ limit: '10kb' }), wrap(auth), wrap(async (re
   res.json(publicUser(u));
 }));
 
+/* profil fotoğrafı */
+app.post('/api/me/avatar', wrap(auth), express.raw({ type: () => true, limit: 3 * 1024 * 1024 }), wrap(async (req, res) => {
+  const type = String(req.headers['content-type'] || '').split(';')[0].trim();
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(type)) return res.status(415).json({ error: 'JPG, PNG veya WEBP fotoğraf yükleyin' });
+  if (!Buffer.isBuffer(req.body) || req.body.length < 100) return res.status(400).json({ error: 'Fotoğraf boş' });
+  const id = newId(24);
+  await pool.query("INSERT INTO files (id, name, type, size, data, uploaded_by, scope) VALUES ($1,$2,$3,$4,$5,$6,'avatar')", [id, 'profil.jpg', type, req.body.length, req.body, req.user.id]);
+  if (req.user.avatar) await pool.query("DELETE FROM files WHERE id = $1 AND scope = 'avatar'", [req.user.avatar]);
+  await pool.query('UPDATE users SET avatar = $1 WHERE id = $2', [id, req.user.id]);
+  const u = publicUser({ ...req.user, avatar: id }); broadcast({ type: 'user', user: u }); res.json(u);
+}));
+app.delete('/api/me/avatar', wrap(auth), wrap(async (req, res) => {
+  if (req.user.avatar) await pool.query("DELETE FROM files WHERE id = $1 AND scope = 'avatar'", [req.user.avatar]);
+  await pool.query('UPDATE users SET avatar = NULL WHERE id = $1', [req.user.id]);
+  const u = publicUser({ ...req.user, avatar: null }); broadcast({ type: 'user', user: u }); res.json(u);
+}));
+
 /* tüm veriler */
 app.get('/api/bootstrap', wrap(auth), wrap(async (req, res) => {
   const seller = req.user.role === 'satici';
   const [docs, users] = await Promise.all([
     seller ? pool.query("SELECT coll, id, data FROM docs WHERE coll IN ('branches','announcements') OR (coll = 'requests' AND data->>'requesterId' = $1)", [req.user.id]) : pool.query('SELECT coll, id, data FROM docs'),
-    seller ? Promise.resolve({ rows: [publicUser(req.user)] }) : pool.query('SELECT id, username, name, role, email, branch, phone, status FROM users ORDER BY name'),
+    seller ? Promise.resolve({ rows: [publicUser(req.user)] }) : pool.query('SELECT id, username, name, role, email, branch, phone, status, avatar FROM users ORDER BY name'),
   ]);
   const data = {}; for (const c of COLLS) data[c] = [];
   for (const r of docs.rows) { if (seller && r.coll === 'announcements' && !annVisible(req.user, r.data)) continue; data[r.coll].push({ id: r.id, ...r.data }); }
@@ -906,7 +930,7 @@ app.get('/api/files/:id', wrap(auth), wrap(async (req, res) => {
   if (!validId(req.params.id)) return res.status(400).end();
   const { rows } = await pool.query('SELECT name, type, data, scope FROM files WHERE id = $1', [req.params.id]);
   if (!rows[0]) return res.status(404).end();
-  if (req.user.role === 'satici' && rows[0].scope !== 'chat') return res.status(403).end();
+  if (req.user.role === 'satici' && rows[0].scope !== 'chat' && rows[0].scope !== 'avatar') return res.status(403).end();
   res.setHeader('Content-Type', rows[0].type);
   res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
   res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(rows[0].name)}`);
