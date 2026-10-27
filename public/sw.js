@@ -1,5 +1,5 @@
 /* Ümraniye Şampiyonları — servis çalışanı: uygulama kabuğu ve telefon bildirimleri */
-const CACHE = 'us-v6';
+const CACHE = 'us-v7';
 const APP = 'Ümraniye Şampiyonları';
 const SHELL = ['/', '/icon.svg', '/icon-192.png', '/manifest.webmanifest', '/vendor/qrcode.js'];
 

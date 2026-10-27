@@ -465,7 +465,7 @@ module.exports = function setup(ctx) {
     const st = await ctx.getSettings();
     const enabled = st.gamesEnabled !== false && !(st.gamesStaffOnly && req.user.role === 'satici');
     const [mine, board, wins, mybest] = await Promise.all([
-      pool.query("SELECT * FROM games WHERE players @> $1::jsonb AND (status IN ('invite','playing') OR updated_at > now() - interval '2 days') ORDER BY updated_at DESC LIMIT 30", [JSON.stringify([{ id: req.user.id }])]),
+      pool.query("SELECT * FROM games WHERE kind = ANY($2) AND players @> $1::jsonb AND (status IN ('invite','playing') OR updated_at > now() - interval '2 days') ORDER BY updated_at DESC LIMIT 30", [JSON.stringify([{ id: req.user.id }]), Object.keys(GAMES2)]),
       pool.query(`SELECT game, user_id, name, best FROM (SELECT s.game, s.user_id, u.name, max(s.score) AS best, row_number() OVER (PARTITION BY s.game ORDER BY max(s.score) DESC) AS rn
         FROM game_scores s JOIN users u ON u.id = s.user_id GROUP BY s.game, s.user_id, u.name) x WHERE rn <= 10 ORDER BY game, best DESC`),
       pool.query(`SELECT g.kind, g.winner AS user_id, u.name, count(*)::int AS n FROM games g JOIN users u ON u.id = g.winner WHERE g.status = 'done' AND g.winner IS NOT NULL GROUP BY g.kind, g.winner, u.name ORDER BY n DESC`),
@@ -493,6 +493,7 @@ module.exports = function setup(ctx) {
     for (const g of games.rows) {
       const ps = (g.players || []).filter(human);
       const res2 = g.result || null;
+      if (['pisti', 'okey101', 'tavla'].includes(g.kind) && ps.length < 2) continue; // botlu maçlar lige sayılmaz
       if (res2 && Array.isArray(res2.ranking) && res2.ranking.length > 2) {
         const pts = [5, 3, 1, 0];
         res2.ranking.forEach((uid, i) => { const p = (g.players || []).find(x => x.id === uid); if (!human(p)) return; const r = R(uid); r.played++; r.points += pts[i] || 0; if (i === 0) { r.wins++; r.kinds[g.kind] = (r.kinds[g.kind] || 0) + 1; r.form.push('G'); } else r.form.push(i === res2.ranking.length - 1 ? 'M' : 'O'); if (i > 0 && i === res2.ranking.length - 1) r.losses++; });

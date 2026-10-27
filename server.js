@@ -175,6 +175,7 @@ async function migrate() {
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
   await purgeTrash();
   await chat.migrate();
+  await tables.restore();
 }
 /* çöp kutusu: 30 günden eski silinenler kalıcı olarak silinir */
 const TRASH_DAYS = 30;
@@ -1118,6 +1119,7 @@ function publicPage(store, body, st) {
 
 /* sohbet, arama ve oyunlar */
 const chat = require('./chat')({ app, pool, express, wrap, auth, isAdmin, newId, clients, pushUser, baseUrl, validId, getSettings, APP_NAME });
+const tables = require('./tables')({ app, pool, express, wrap, auth, newId, clients, pushUser, baseUrl, validId, getSettings, appUrl: () => APP_URL_RAW() });
 
 /* sayfa */
 app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html', maxAge: 0, setHeaders: (res, p) => { if (p.endsWith('sw.js')) res.setHeader('Service-Worker-Allowed', '/'); } }));
