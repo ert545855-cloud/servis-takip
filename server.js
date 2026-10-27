@@ -14,6 +14,7 @@
  *   MAIL_FROM        Gönderen adres (varsayılan onboarding@messagebird.dev)
  *   MAIL_FROM_NAME   Gönderen adı (varsayılan "Ümraniye Şampiyonları")
  *   VAPID_PUBLIC / VAPID_PRIVATE / VAPID_SUBJECT   Telefon bildirimleri için anahtarlar
+ *   OLD_DATABASE_URL / OLD_DB_SCHEMA   Veritabanı boşken verileri bu eski veritabanından taşır
  *   PORT             Dinlenecek port
  */
 const express = require('express');
@@ -21,6 +22,8 @@ const crypto = require('crypto');
 const path = require('path');
 const { Pool } = require('pg');
 let webpush = null;
+let XLSX = null;
+try { XLSX = require('xlsx'); } catch { /* isteğe bağlı */ }
 try { webpush = require('web-push'); } catch { /* isteğe bağlı */ }
 
 const APP_NAME = 'Ümraniye Şampiyonları';
@@ -40,8 +43,8 @@ const VAPID_PUBLIC = process.env.VAPID_PUBLIC || '';
 const pushReady = !!(webpush && VAPID_PUBLIC && process.env.VAPID_PRIVATE);
 if (pushReady) webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:admin@example.com', VAPID_PUBLIC, process.env.VAPID_PRIVATE);
 
-const COLLS = new Set(['tickets', 'firms', 'customers', 'categories', 'products', 'settings', 'requests', 'branches', 'shipments']);
-const SELLER_READ = new Set(['requests', 'branches']);
+const COLLS = new Set(['tickets', 'firms', 'customers', 'categories', 'products', 'settings', 'requests', 'branches', 'shipments', 'announcements']);
+const STAFF_ROLES = new Set(['admin', 'user']);
 const FILE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'application/pdf']);
 const MAX_FILE = 15 * 1024 * 1024;
 const SESSION_DAYS = 30;
@@ -85,14 +88,14 @@ function trDate(s) { if (!s) return '—'; const [y, m, d] = String(s).slice(0, 
 function dayDiff(a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5); }
 
 /* ---------------- e-posta ---------------- */
-async function sendMail({ to, subject, html, text }) {
+async function sendMail({ to, subject, html, text, attachments }) {
   if (!BIRD_KEY || !to) return { ok: false, reason: 'no_key' };
   const region = (BIRD_KEY.match(/^bk_([a-z]{2}\d+)_/) || [])[1] || 'us1';
   try {
     const r = await fetch(`https://${region}.platform.bird.com/v1/email/messages`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${BIRD_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: { email: MAIL_FROM, name: MAIL_FROM_NAME }, to: [to], subject, html, text, category: 'transactional', track_opens: false, track_clicks: false }),
+      body: JSON.stringify({ from: { email: MAIL_FROM, name: MAIL_FROM_NAME }, to: [to], subject, html, text, category: 'transactional', track_opens: false, track_clicks: false, ...(attachments ? { attachments } : {}) }),
     });
     if (!r.ok) { const body = await r.text().catch(() => ''); console.warn('E-posta gönderilemedi', to, r.status, body.slice(0, 300)); return { ok: false, reason: 'rejected', status: r.status }; }
     console.log('E-posta gönderildi:', to, subject);
@@ -141,6 +144,7 @@ async function migrate() {
       endpoint TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
     CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value JSONB NOT NULL);
   `);
+  await migrateFromOld();
   const { rows } = await pool.query('SELECT count(*)::int AS n FROM users');
   if (rows[0].n === 0) {
     const u = (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
@@ -164,11 +168,45 @@ async function migrate() {
   }
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
 }
+async function migrateFromOld() {
+  const oldUrl = process.env.OLD_DATABASE_URL;
+  if (!oldUrl) return;
+  const cnt = await pool.query('SELECT count(*)::int AS n FROM docs');
+  if (cnt.rows[0].n > 0) return;
+  const oldSchema = /^[a-z_][a-z0-9_]{0,40}$/.test(process.env.OLD_DB_SCHEMA || '') ? process.env.OLD_DB_SCHEMA : 'servis';
+  const old = new Pool({ connectionString: oldUrl, ssl: /localhost|127\.0\.0\.1/.test(oldUrl) ? false : { rejectUnauthorized: false }, max: 2 });
+  try {
+    const q = t => old.query(`SELECT * FROM ${oldSchema}.${t}`);
+    const [docs, users, files] = await Promise.all([q('docs'), q('users'), q('files')]);
+    await pool.query('DELETE FROM users');
+    for (const u of users.rows) await pool.query('INSERT INTO users (id, username, name, pass, role, created_at, email, email_verified, status, branch, phone) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT DO NOTHING', [u.id, u.username, u.name, u.pass, u.role, u.created_at, u.email || null, !!u.email_verified, u.status || 'active', u.branch || null, u.phone || null]);
+    for (const d of docs.rows) await pool.query('INSERT INTO docs (coll, id, data, updated_at) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING', [d.coll, d.id, d.data, d.updated_at]);
+    for (const f of files.rows) await pool.query('INSERT INTO files (id, name, type, size, data, uploaded_by, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING', [f.id, f.name, f.type, f.size, f.data, f.uploaded_by, f.created_at]);
+    console.log(`Eski veritabanından taşındı: ${docs.rows.length} belge, ${users.rows.length} kullanıcı, ${files.rows.length} dosya`);
+  } catch (e) { console.error('Eski veritabanından taşıma başarısız:', e.message); } finally { await old.end().catch(() => {}); }
+}
 async function getDoc(coll, id) { const { rows } = await pool.query('SELECT data FROM docs WHERE coll=$1 AND id=$2', [coll, id]); return rows[0] ? { id, ...rows[0].data } : null; }
 async function getSettings() { return (await getDoc('settings', 'main')) || {}; }
 async function putDoc(coll, id, data) {
   const { rows } = await pool.query(`INSERT INTO docs (coll, id, data) VALUES ($1,$2,$3) ON CONFLICT (coll, id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() RETURNING data`, [coll, id, data]);
   return { id, ...rows[0].data };
+}
+
+/* ---------------- duyuru görünürlüğü ---------------- */
+function annVisible(user, a) {
+  if (!a) return false;
+  if (user.role !== 'satici') return true;
+  const aud = a.audience || 'all';
+  if (aud === 'all' || aud === 'satici') return true;
+  if (aud.startsWith('branch:')) return (user.branch || '') === aud.slice(7);
+  return false;
+}
+function annTargetsSql(a) {
+  const aud = (a && a.audience) || 'all';
+  if (aud === 'staff') return ["u.role IN ('admin','user','viewer')", []];
+  if (aud === 'satici') return ["u.role = 'satici'", []];
+  if (aud.startsWith('branch:')) return ['u.branch = $1', [aud.slice(7)]];
+  return ['true', []];
 }
 
 /* ---------------- anlık bildirim (SSE) ---------------- */
@@ -177,11 +215,13 @@ function canSee(user, evt) {
   if (evt.type === 'doc') {
     if (user.role !== 'satici') return true;
     if (evt.coll === 'branches') return true;
+    if (evt.coll === 'announcements') return evt.doc ? annVisible(user, evt.doc) : true;
     if (evt.coll !== 'requests') return false;
     const owner = (evt.doc && evt.doc.requesterId) || evt.owner;
     return owner === user.id;
   }
   if (evt.type === 'user' || evt.type === 'user-removed') return user.role !== 'satici' || (evt.user && evt.user.id === user.id);
+  if (evt.type === 'reload') return user.role !== 'satici';
   return true;
 }
 function broadcast(evt) {
@@ -272,6 +312,7 @@ async function maybeDailyReport(force) {
       ${tbl('Fatura süresi geçenler', late, '#C0352A')}${tbl('Bugün son gün', today)}${tbl('2 gün içinde dolacaklar', soon)}${tbl('Servisten geldi, müşteri almadı', waiting)}${tbl('Yanıt bekleyen ürün talepleri', newReq)}
       ${!(late.length + today.length + soon.length + waiting.length + newReq.length) ? '<p>Bugün takip edilecek kayıt yok.</p>' : ''}`,
       APP_URL ? { url: APP_URL, label: 'Panoyu aç' } : null);
+    sendBackup(st.backupEmail || to).catch(e => console.warn('Yedek hatası', e.message));
     return await sendMail({ to, subject: `Günlük rapor ${trDate(now.date)} – ${late.length} gecikmiş, ${today.length} bugün dolan`, html, text: `${act.length} açık kayıt, ${late.length} süresi geçen, ${today.length} bugün dolan, ${newReq.length} yeni talep.` });
   } catch (e) { console.warn('Rapor hatası', e.message); return { ok: false }; } finally { reportBusy = false; }
 }
@@ -438,11 +479,11 @@ app.patch('/api/me', express.json({ limit: '10kb' }), wrap(auth), wrap(async (re
 app.get('/api/bootstrap', wrap(auth), wrap(async (req, res) => {
   const seller = req.user.role === 'satici';
   const [docs, users] = await Promise.all([
-    seller ? pool.query("SELECT coll, id, data FROM docs WHERE coll = 'branches' OR (coll = 'requests' AND data->>'requesterId' = $1)", [req.user.id]) : pool.query('SELECT coll, id, data FROM docs'),
+    seller ? pool.query("SELECT coll, id, data FROM docs WHERE coll IN ('branches','announcements') OR (coll = 'requests' AND data->>'requesterId' = $1)", [req.user.id]) : pool.query('SELECT coll, id, data FROM docs'),
     seller ? Promise.resolve({ rows: [publicUser(req.user)] }) : pool.query('SELECT id, username, name, role, email, branch, phone, status FROM users ORDER BY name'),
   ]);
   const data = {}; for (const c of COLLS) data[c] = [];
-  for (const r of docs.rows) data[r.coll].push({ id: r.id, ...r.data });
+  for (const r of docs.rows) { if (seller && r.coll === 'announcements' && !annVisible(req.user, r.data)) continue; data[r.coll].push({ id: r.id, ...r.data }); }
   if (seller) { const st = await getSettings(); data.settings = [{ id: 'main', storeName: st.storeName || '', holidays: st.holidays || [] }]; }
   res.json({ me: publicUser(req.user), users: users.rows, data, push: pushReady ? VAPID_PUBLIC : null, mailEnabled: mailEnabled() });
 }));
@@ -451,7 +492,7 @@ app.get('/api/events', wrap(auth), (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
   res.write(`data: ${JSON.stringify({ type: 'hello' })}\n\n`);
-  const c = { res, user: { id: req.user.id, role: req.user.role } };
+  const c = { res, user: { id: req.user.id, role: req.user.role, branch: req.user.branch || '' } };
   clients.add(c);
   req.on('close', () => clients.delete(c));
 });
@@ -462,6 +503,7 @@ function checkDoc(req, res) {
   if (!COLLS.has(coll) || !validId(id)) { res.status(400).json({ error: 'Geçersiz kayıt yolu' }); return false; }
   if (req.user.role === 'viewer') { res.status(403).json({ error: 'Görüntüleme yetkiniz var, değişiklik yapamazsınız' }); return false; }
   if (req.user.role === 'satici' && coll !== 'requests') { res.status(403).json({ error: 'Bu bölüm için yetkiniz yok' }); return false; }
+  if (coll === 'announcements' && !STAFF_ROLES.has(req.user.role)) { res.status(403).json({ error: 'Duyuruyu yalnızca yönetim yayınlayabilir' }); return false; }
   return true;
 }
 function sellerSanitize(body, old, user) {
@@ -500,12 +542,25 @@ async function writeDoc(req, res, mode) {
       data.createdAt = data.createdAt || new Date().toISOString();
       if (!data.no) data.no = 'TLP-' + istNow().date.slice(2).replace(/-/g, '') + '-' + id.replace(/[^a-z0-9]/gi, '').slice(-4).toUpperCase();
     }
-    if (data.status === 'talep_edildi' && !data.requestedAt) data.requestedAt = new Date().toISOString();
+    const nowIso = new Date().toISOString();
+    if (data.status === 'talep_edildi' && !data.requestedAt) data.requestedAt = nowIso;
+    if (data.status === 'geldi' && !data.arrivedAt) data.arrivedAt = nowIso;
+    if (data.status === 'tamamlandi' && !data.completedAt) { data.completedAt = nowIso; if (!data.arrivedAt) data.arrivedAt = nowIso; }
+    if (data.status === 'iptal' && !data.cancelledAt) data.cancelledAt = nowIso;
+  }
+  if (coll === 'announcements') {
+    if (old) { data.reads = old.reads || {}; data.createdBy = old.createdBy; data.createdByName = old.createdByName; data.createdAt = old.createdAt; }
+    else { data.reads = { [req.user.id]: new Date().toISOString() }; data.createdBy = req.user.id; data.createdByName = req.user.name; data.createdAt = new Date().toISOString(); }
   }
   const doc = await putDoc(coll, id, data);
   broadcast({ type: 'doc', coll, id, doc });
   res.json(doc);
   if (coll === 'requests') onRequestChange(old, doc, req.user, req).catch(e => console.warn(e.message));
+  if (coll === 'announcements' && !old) {
+    const [sql, params] = annTargetsSql(doc);
+    const n = params.length + 1;
+    pushTo(`${sql} AND u.id <> $${n}`, [...params, req.user.id], { title: (doc.pinned ? '📌 ' : '') + 'Duyuru: ' + (doc.title || ''), body: String(doc.body || '').slice(0, 140), url: `${baseUrl(req)}/#duyurular`, tag: 'ann-' + id });
+  }
   if (coll === 'tickets' && old && old.status !== doc.status && doc.status === 'servisten_geldi')
     pushStaff({ title: 'Ürün servisten geldi', body: `${doc.no} · ${doc.customerName || ''} · ${doc.productName || ''}`, url: `${baseUrl(req)}/?k=${id}`, tag: 'tk-' + id }, req.user.id);
 }
@@ -520,6 +575,136 @@ app.delete('/api/docs/:coll/:id', wrap(auth), wrap(async (req, res) => {
   await pool.query('DELETE FROM docs WHERE coll = $1 AND id = $2', [coll, id]);
   broadcast({ type: 'doc', coll, id, doc: null, owner: old && old.requesterId });
   res.json({ ok: true });
+}));
+
+/* duyuru okundu */
+app.post('/api/ann/:id/read', wrap(auth), wrap(async (req, res) => {
+  if (!validId(req.params.id)) return res.status(400).json({ error: 'Geçersiz duyuru' });
+  const a = await getDoc('announcements', req.params.id);
+  if (!a || !annVisible(req.user, a)) return res.status(404).json({ error: 'Duyuru bulunamadı' });
+  const { id, ...data } = a;
+  data.reads = { ...(a.reads || {}) };
+  if (!data.reads[req.user.id]) data.reads[req.user.id] = new Date().toISOString();
+  const doc = await putDoc('announcements', id, data);
+  broadcast({ type: 'doc', coll: 'announcements', id, doc });
+  res.json(doc);
+}));
+
+/* toplu içe aktarma (Excel) */
+app.post('/api/import/tickets', express.json({ limit: '8mb' }), wrap(auth), (req, res, next) => (STAFF_ROLES.has(req.user.role) ? next() : res.status(403).json({ error: 'Yetkiniz yok' })), wrap(async (req, res) => {
+  const rows = Array.isArray(req.body && req.body.rows) ? req.body.rows.slice(0, 5000) : [];
+  if (!rows.length) return res.status(400).json({ error: 'Aktarılacak satır yok' });
+  const all = await pool.query("SELECT coll, id, data FROM docs WHERE coll IN ('firms','customers','categories','products','tickets')");
+  const idx = { firms: new Map(), customers: new Map(), categories: new Map(), products: new Map() };
+  const nos = new Set();
+  const norm = v => String(v || '').trim().toLocaleLowerCase('tr-TR').replace(/\s+/g, ' ');
+  for (const r of all.rows) { if (idx[r.coll]) idx[r.coll].set(norm(r.data.name), r.id); if (r.coll === 'tickets' && r.data.no) nos.add(r.data.no); }
+  const nowIso = new Date().toISOString();
+  async function ensure(coll, name, extra) {
+    const k = norm(name); if (!k) return '';
+    if (idx[coll].has(k)) return idx[coll].get(k);
+    const id = newId(); await pool.query('INSERT INTO docs (coll, id, data) VALUES ($1,$2,$3)', [coll, id, { name: String(name).trim(), createdAt: nowIso, ...extra }]);
+    idx[coll].set(k, id); return id;
+  }
+  let added = 0, skipped = 0;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const r of rows) {
+      if (!r || !r.customerName || !r.productName) { skipped++; continue; }
+      if (r.no && nos.has(r.no)) { skipped++; continue; }
+      const firmId = await ensure('firms', r.firmName, {});
+      const categoryId = await ensure('categories', r.categoryName || 'Diğer', {});
+      const customerId = await ensure('customers', r.customerName, r.customerPhone ? { phone: r.customerPhone } : {});
+      const productId = await ensure('products', r.productName, { categoryId, firmId });
+      const id = newId();
+      const no = r.no || ('ARZ-' + String(r.openedAt || '').slice(2).replace(/-/g, '') + '-' + id.slice(-4).toUpperCase());
+      nos.add(no);
+      const doc = { ...r, no, firmId, categoryId, customerId, productId, categoryName: r.categoryName || 'Diğer', publicToken: newId(), parts: [], attachments: [], comments: [], sms: [],
+        createdAt: nowIso, updatedAt: nowIso, createdBy: req.user.id, imported: true, log: [{ at: nowIso.slice(0, 16).replace('T', ' '), text: 'Excel\'den içe aktarıldı', by: req.user.id }] };
+      await client.query('INSERT INTO docs (coll, id, data) VALUES ($1,$2,$3)', ['tickets', id, doc]);
+      added++;
+    }
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+  broadcast({ type: 'reload' });
+  res.json({ ok: true, added, skipped });
+}));
+
+/* yedekleme */
+const BK_STATUS = { teslim_alindi: 'Teslim Alındı', servise_gonderildi: 'Servise Gönderildi', serviste: 'Serviste', servisten_geldi: 'Servisten Geldi', musteriye_teslim: 'Müşteriye Teslim', fatura_talep: 'Fatura Talebi', faturalandi: 'Faturalandı', kapandi: 'Kapandı', acik: 'Teslim Alındı', islemde: 'Serviste', parca: 'Serviste' };
+async function buildBackup() {
+  const [docs, users] = await Promise.all([
+    pool.query('SELECT coll, id, data FROM docs ORDER BY coll, id'),
+    pool.query('SELECT id, username, name, role, email, branch, phone, status, created_at FROM users ORDER BY name'),
+  ]);
+  const data = {}; for (const c of COLLS) data[c] = [];
+  for (const r of docs.rows) (data[r.coll] = data[r.coll] || []).push({ id: r.id, ...r.data });
+  const json = { app: APP_NAME, version: 1, createdAt: new Date().toISOString(), data, users: users.rows };
+  let xlsx = null;
+  if (XLSX) {
+    const wb = XLSX.utils.book_new();
+    const add = (name, rows) => { const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Bilgi: 'Kayıt yok' }]); XLSX.utils.book_append_sheet(wb, ws, name); };
+    add('Arıza kayıtları', data.tickets.map(t => ({ 'Kayıt No': t.no, 'Kayıt Tarihi': t.openedAt, 'Durum': BK_STATUS[t.status] || t.status, 'Müşteri': t.customerName, 'Telefon': t.customerPhone || '', 'Ürün': t.productName, 'Kategori': t.categoryName, 'Firma': t.firmName, 'Seri No': t.serial || '', 'Arıza': t.desc || '', 'Garanti': t.warranty || '', 'Satış Tarihi': t.purchaseDate || '', 'Garanti Bitişi': t.warrantyEnd || '', 'Servise Gönderim': t.sentAt || '', 'Servisten Geliş': t.backAt || '', 'Müşteriye Teslim': t.deliveredAt || '', 'Fatura Son Tarihi': t.dueAt || '', 'Fatura No': t.invoiceNo || '', 'Fatura Tarihi': t.invoicedAt || '', 'Tutar (TL)': t.invoiceAmount ?? '', 'Memnuniyet': t.rating ? t.rating.score : '', 'Not': t.note || '' })));
+    add('Ürün talepleri', data.requests.map(r => ({ 'Talep No': r.no, 'Tarih': (r.createdAt || '').slice(0, 10), 'Durum': REQ_LABEL[r.status] || r.status, 'Ürün': r.productName, 'Kod': r.productCode, 'Adet': r.qty, 'İstenen Şube': r.fromBranch, 'Talep Eden Şube': r.toBranch || '', 'Kimin İçin': r.purpose === 'musteri' ? 'Müşteri' : 'Mağaza', 'Müşteri': r.customerName || '', 'Satıcı': r.requesterName || '', 'Geliş': (r.arrivedAt || '').slice(0, 10) })));
+    add('Müşteriler', data.customers.map(c => ({ 'Ad': c.name, 'Telefon': c.phone || '', 'Adres': c.address || '' })));
+    add('Firmalar', data.firms.map(f => ({ 'Ad': f.name, 'Telefon': f.phone || '', 'E-posta': f.email || '' })));
+    add('Şubeler', data.branches.map(b => ({ 'Ad': b.name, 'Telefon': b.phone || '' })));
+    add('Sevkiyatlar', data.shipments.map(s => ({ 'Sevk No': s.no, 'Tarih': s.date, 'Firma': s.firmName || '', 'Takip No': s.trackNo || '', 'Ürün sayısı': (s.ticketIds || []).length })));
+    add('Duyurular', data.announcements.map(a => ({ 'Başlık': a.title, 'Tarih': (a.createdAt || '').slice(0, 10), 'Kime': a.audience || 'all', 'Okuyan': Object.keys(a.reads || {}).length })));
+    add('Kullanıcılar', users.rows.map(u => ({ 'Ad': u.name, 'Kullanıcı adı': u.username, 'E-posta': u.email || '', 'Rol': u.role, 'Şube': u.branch || '', 'Durum': u.status })));
+    xlsx = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  }
+  return { json, xlsx, counts: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, v.length])) };
+}
+async function sendBackup(to) {
+  if (!to) return { ok: false, reason: 'no_recipient' };
+  const b = await buildBackup();
+  const day = istNow().date;
+  const attachments = [{ filename: `umraniye-sampiyonlari-yedek-${day}.json`, content: Buffer.from(JSON.stringify(b.json)).toString('base64'), content_type: 'application/json' }];
+  if (b.xlsx) attachments.unshift({ filename: `umraniye-sampiyonlari-yedek-${day}.xlsx`, content: b.xlsx.toString('base64'), content_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const c = b.counts;
+  return sendMail({ to, subject: `Yedek ${trDate(day)} – ${c.tickets} kayıt, ${c.requests} talep`,
+    html: mailLayout(`Günlük yedek · ${trDate(day)}`, `<p>Tüm veriler ektedir: <b>${c.tickets}</b> arıza kaydı, <b>${c.requests}</b> ürün talebi, <b>${c.customers}</b> müşteri, <b>${c.firms}</b> firma, <b>${c.announcements}</b> duyuru.</p><p>Excel dosyasını açarak inceleyebilirsiniz. JSON dosyası, gerektiğinde Tanımlar ve Ayarlar → Yedekleme bölümünden geri yüklemek içindir. Fotoğraf ve belgeler yedeğe dahil değildir.</p>`),
+    text: `Günlük yedek ektedir. ${c.tickets} kayıt, ${c.requests} talep.`, attachments });
+}
+app.get('/api/backup/download', wrap(auth), isAdmin, wrap(async (req, res) => {
+  const b = await buildBackup();
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="umraniye-sampiyonlari-yedek-${istNow().date}.json"`);
+  res.send(JSON.stringify(b.json));
+}));
+app.get('/api/backup/excel', wrap(auth), isAdmin, wrap(async (req, res) => {
+  const b = await buildBackup();
+  if (!b.xlsx) return res.status(500).json({ error: 'Excel oluşturulamadı' });
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="umraniye-sampiyonlari-yedek-${istNow().date}.xlsx"`);
+  res.send(b.xlsx);
+}));
+app.post('/api/backup/send', wrap(auth), isAdmin, wrap(async (req, res) => {
+  const st = await getSettings();
+  res.json(await sendBackup(st.backupEmail || st.reportEmail));
+}));
+app.post('/api/backup/restore', express.json({ limit: '25mb' }), wrap(auth), isAdmin, wrap(async (req, res) => {
+  const d = req.body && req.body.data;
+  if (!d || typeof d !== 'object') return res.status(400).json({ error: 'Geçersiz yedek dosyası' });
+  let n = 0;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const [coll, items] of Object.entries(d)) {
+      if (!COLLS.has(coll) || !Array.isArray(items)) continue;
+      for (const it of items) {
+        if (!it || !validId(it.id)) continue;
+        const { id, ...data } = it;
+        await client.query('INSERT INTO docs (coll, id, data) VALUES ($1,$2,$3) ON CONFLICT (coll, id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()', [coll, id, data]);
+        n++;
+      }
+    }
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+  broadcast({ type: 'reload' });
+  res.json({ ok: true, restored: n });
 }));
 
 /* dosyalar */
@@ -656,9 +841,13 @@ app.get('/takip/:token', wrap(async (req, res) => {
     else quote = `<div class="box"><p>Onarım bedeli (${esc(Number(q.amount).toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' }))}): <b>${q.status === 'onaylandi' ? 'onayladınız' : 'onaylamadınız'}</b>${q.decidedAt ? ' · ' + esc(trDate(q.decidedAt)) : ''}</p></div>`;
   }
   const body = `<p class="hi">Merhaba ${esc(first)},</p><h1>${esc(t.productName || 'Ürününüz')}</h1><p class="no">Kayıt no: <b>${esc(t.no)}</b></p>
-    ${req.query.ok ? `<div class="box okb">${req.query.ok === 'onay' ? 'Onayınız alındı, teşekkür ederiz. Onarım başlatılacak.' : 'Kararınız kaydedildi. Mağazamız sizinle iletişime geçecek.'}</div>` : ''}
+    ${req.query.ok ? `<div class="box okb">${req.query.ok === 'onay' ? 'Onayınız alındı, teşekkür ederiz. Onarım başlatılacak.' : req.query.ok === 'puan' ? 'Değerlendirmeniz için teşekkür ederiz.' : 'Kararınız kaydedildi. Mağazamız sizinle iletişime geçecek.'}</div>` : ''}
     ${quote}<ol class="steps">${steps}</ol>
-    ${t.serviceResult && RESULT[t.serviceResult] ? `<div class="box"><p>Servis sonucu: <b>${esc(RESULT[t.serviceResult])}</b></p></div>` : ''}`;
+    ${t.serviceResult && RESULT[t.serviceResult] ? `<div class="box"><p>Servis sonucu: <b>${esc(RESULT[t.serviceResult])}</b></p></div>` : ''}
+    ${t.warrantyEnd ? `<div class="box"><p>Garanti bitiş tarihi: <b>${esc(trDate(t.warrantyEnd))}</b></p></div>` : ''}
+    ${idx >= 4 ? (t.rating ? `<div class="box okb"><p>Değerlendirmeniz için teşekkür ederiz: <b>${'★'.repeat(t.rating.score)}${'☆'.repeat(5 - t.rating.score)}</b></p></div>` : `<div class="box"><h2>Hizmetimizi değerlendirin</h2><p>Bu süreçten ne kadar memnun kaldınız?</p>
+      <form method="post" action="/takip/${esc(req.params.token)}/puan" class="rate"><div class="stars">${[5, 4, 3, 2, 1].map(n => `<input type="radio" name="puan" value="${n}" id="p${n}" required><label for="p${n}" title="${n} yıldız">★</label>`).join('')}</div>
+      <textarea name="yorum" maxlength="500" placeholder="Eklemek istediğiniz bir şey var mı? (isteğe bağlı)"></textarea><button class="ok" type="submit">Gönder</button></form></div>`) : ''}`;
   res.send(publicPage(store, body, st));
 }));
 app.post('/takip/:token/teklif', express.urlencoded({ extended: false, limit: '2kb' }), wrap(async (req, res) => {
@@ -675,6 +864,21 @@ app.post('/takip/:token/teklif', express.urlencoded({ extended: false, limit: '2
   broadcast({ type: 'doc', coll: 'tickets', id, doc });
   pushStaff({ title: ok ? 'Onarım onaylandı' : 'Onarım reddedildi', body: `${t.no} · ${t.customerName || ''} · ${t.productName || ''}`, url: `${baseUrl(req)}/?k=${id}`, tag: 'tk-' + id });
   res.redirect(`/takip/${encodeURIComponent(req.params.token)}?ok=${ok ? 'onay' : 'red'}`);
+}));
+app.post('/takip/:token/puan', express.urlencoded({ extended: false, limit: '4kb' }), wrap(async (req, res) => {
+  if (limited('rate:' + req.ip, 20, 60 * 60e3)) return res.status(429).send('Çok fazla istek');
+  const t = await ticketByToken(req.params.token);
+  const score = Math.round(Number(req.body.puan));
+  if (!t || t.rating || !(score >= 1 && score <= 5) || (ORDER[t.status] ?? 0) < 4) return res.redirect(`/takip/${encodeURIComponent(req.params.token)}`);
+  const comment = String(req.body.yorum || '').trim().slice(0, 500);
+  const now = new Date();
+  const { id, ...rest } = t;
+  const data = { ...rest, rating: { score, comment, at: now.toISOString() }, updatedAt: now.toISOString(),
+    log: [...(t.log || []), { at: now.toLocaleString('sv-SE', { timeZone: 'Europe/Istanbul' }).slice(0, 16), text: `Müşteri ${score}/5 puan verdi${comment ? ': ' + comment.slice(0, 80) : ''}`, by: null }].slice(-80) };
+  const doc = await putDoc('tickets', id, data);
+  broadcast({ type: 'doc', coll: 'tickets', id, doc });
+  if (score <= 2) pushStaff({ title: `Düşük memnuniyet puanı: ${score}/5`, body: `${t.no} · ${t.customerName || ''} · ${t.firmName || ''}${comment ? ' · ' + comment.slice(0, 80) : ''}`, url: `${baseUrl(req)}/?k=${id}`, tag: 'rate-' + id });
+  res.redirect(`/takip/${encodeURIComponent(req.params.token)}?ok=puan`);
 }));
 function publicPage(store, body, st) {
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ürün takibi · ${esc(store)}</title><meta name="robots" content="noindex">
@@ -693,7 +897,11 @@ function publicPage(store, body, st) {
   .box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:12px 0}.box.warn{background:var(--warn);border-color:transparent}.box.okb{border-color:var(--ok)}
   .box h2{font-size:1.05rem;margin:0 0 6px}form{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
   button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:11px 18px;cursor:pointer}button.ok{background:var(--ok);color:#fff}button.no{background:var(--card);color:var(--bad);border:1px solid var(--bad)}
-  footer{color:var(--muted);font-size:.85rem;margin-top:24px}</style></head>
+  footer{color:var(--muted);font-size:.85rem;margin-top:24px}
+  .rate{flex-direction:column;align-items:stretch}.stars{display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:4px}
+  .stars input{position:absolute;opacity:0;width:1px;height:1px}.stars label{font-size:2.4rem;line-height:1;color:var(--line);cursor:pointer;padding:0 2px}
+  .stars input:checked~label,.stars label:hover,.stars label:hover~label{color:var(--gold)}.stars input:focus-visible+label{outline:2px solid var(--acc);border-radius:4px}
+  textarea{font:inherit;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--card);color:var(--fg);min-height:70px}</style></head>
   <body><header><img src="/icon.svg" alt=""><span>${esc(store)}</span></header><main>${body}
   <footer>${st.storePhone ? 'Bilgi için: ' + esc(st.storePhone) : ''}</footer></main></body></html>`;
 }
