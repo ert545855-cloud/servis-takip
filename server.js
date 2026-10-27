@@ -171,6 +171,7 @@ async function migrate() {
   }
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
   await purgeTrash();
+  await chat.migrate();
 }
 /* çöp kutusu: 30 günden eski silinenler kalıcı olarak silinir */
 const TRASH_DAYS = 30;
@@ -229,6 +230,7 @@ function annTargetsSql(a) {
 /* ---------------- anlık bildirim (SSE) ---------------- */
 const clients = new Set(); // {res, user}
 function canSee(user, evt) {
+  if (typeof chat !== 'undefined') { const r = chat.canSee(user, evt); if (r !== null) return r; }
   if (evt.type === 'doc') {
     if (user.role !== 'satici') return true;
     if (evt.coll === 'branches') return true;
@@ -516,17 +518,17 @@ app.get('/api/bootstrap', wrap(auth), wrap(async (req, res) => {
   ]);
   const data = {}; for (const c of COLLS) data[c] = [];
   for (const r of docs.rows) { if (seller && r.coll === 'announcements' && !annVisible(req.user, r.data)) continue; data[r.coll].push({ id: r.id, ...r.data }); }
-  if (seller) { const st = await getSettings(); data.settings = [{ id: 'main', storeName: st.storeName || '', holidays: st.holidays || [] }]; }
+  if (seller) { const st = await getSettings(); data.settings = [{ id: 'main', storeName: st.storeName || '', holidays: st.holidays || [], gamesEnabled: st.gamesEnabled, gamesStaffOnly: st.gamesStaffOnly }]; }
   res.json({ me: publicUser(req.user), users: users.rows, data, push: pushReady ? VAPID_PUBLIC : null, mailEnabled: mailEnabled() });
 }));
 
 app.get('/api/events', wrap(auth), (req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
-  res.write(`data: ${JSON.stringify({ type: 'hello' })}\n\n`);
-  const c = { res, user: { id: req.user.id, role: req.user.role, branch: req.user.branch || '' } };
+  const c = { res, cid: newId(12), user: { id: req.user.id, role: req.user.role, branch: req.user.branch || '', name: req.user.name } };
   clients.add(c);
-  req.on('close', () => clients.delete(c));
+  chat.onConnect(c);
+  req.on('close', () => { clients.delete(c); chat.onDisconnect(c); });
 });
 
 /* belgeler */
@@ -892,10 +894,11 @@ app.post('/api/files', wrap(auth), staffOnly, (req, res, next) => (req.user.role
   await pool.query('INSERT INTO files (id, name, type, size, data, uploaded_by) VALUES ($1,$2,$3,$4,$5,$6)', [id, name, type, req.body.length, req.body, req.user.id]);
   res.json({ id, size: req.body.length, type, name });
 }));
-app.get('/api/files/:id', wrap(auth), staffOnly, wrap(async (req, res) => {
+app.get('/api/files/:id', wrap(auth), wrap(async (req, res) => {
   if (!validId(req.params.id)) return res.status(400).end();
-  const { rows } = await pool.query('SELECT name, type, data FROM files WHERE id = $1', [req.params.id]);
+  const { rows } = await pool.query('SELECT name, type, data, scope FROM files WHERE id = $1', [req.params.id]);
   if (!rows[0]) return res.status(404).end();
+  if (req.user.role === 'satici' && rows[0].scope !== 'chat') return res.status(403).end();
   res.setHeader('Content-Type', rows[0].type);
   res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
   res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(rows[0].name)}`);
@@ -1080,6 +1083,9 @@ function publicPage(store, body, st) {
   <body><header><img src="/icon.svg" alt=""><span>${esc(store)}</span></header><main>${body}
   <footer>${st.storePhone ? 'Bilgi için: ' + esc(st.storePhone) : ''}</footer></main></body></html>`;
 }
+
+/* sohbet, arama ve oyunlar */
+const chat = require('./chat')({ app, pool, express, wrap, auth, isAdmin, newId, clients, pushUser, baseUrl, validId, getSettings, APP_NAME });
 
 /* sayfa */
 app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html', maxAge: 0, setHeaders: (res, p) => { if (p.endsWith('sw.js')) res.setHeader('Service-Worker-Allowed', '/'); } }));
