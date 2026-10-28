@@ -1759,7 +1759,7 @@ button.tl-seat.empty{cursor:pointer}button.tl-seat.empty:hover:not(:disabled) .a
       <form id="regform" class="lmode" data-mode="register" hidden autocomplete="on">
         <div class="field"><label for="g-name">Ad soyad</label><input id="g-name" autocomplete="name" required></div>
         <div class="field"><label for="g-email">E-posta</label><input id="g-email" type="email" autocomplete="email" required></div>
-        <div class="grid" style="gap:10px"><div class="field"><label for="g-phone">Telefon</label><input id="g-phone" type="tel" autocomplete="tel" placeholder="05xx…"></div><div class="field"><label for="g-branch">Şubeniz</label><input id="g-branch" list="dl-branches" required placeholder="Şube seçin"></div></div>
+        <div class="grid" style="gap:10px"><div class="field"><label for="g-phone">Telefon</label><input id="g-phone" type="tel" autocomplete="tel" placeholder="05xx…"></div><div class="field"><label for="g-branch">Şubeniz</label><input id="g-branch" value="Ümraniye" readonly tabindex="-1" aria-readonly="true" title="Kayıt olan herkes bu şubeden sayılır" style="background:var(--surface-2);color:var(--muted)"></div></div>
         <div class="field"><label for="g-pass">Şifre (en az 6 karakter)</label><input id="g-pass" type="password" autocomplete="new-password" minlength="6" required></div>
         <button class="btn primary" type="submit" id="g-btn" style="width:100%">Kayıt ol</button>
         <p class="hint" style="margin:0">Kayıttan sonra e-posta adresinize doğrulama bağlantısı gönderilir. Doğruladıktan sonra şubeler arası ürün talebi açabilirsiniz.</p>
@@ -1851,7 +1851,7 @@ const DEF_TPL={
 const TPL_LABEL={teslim_alindi:'Ürün teslim alındı',servise_gonderildi:'Servise gönderildi',teklif:'Onarım onayı (bedel)',servisten_geldi:'Servisten geldi, teslim alabilir',hatirlatma:'Mağazada bekliyor hatırlatması',musteriye_teslim:'Teslim edildi, teşekkür',odunc:'Ödünç ürün iadesi',ozel:'Boş mesaj (kendim yazacağım)'};
 const PRI={acil:'Acil',normal:'Normal',dusuk:'Düşük'};
 const WAR={garantili:'Garantili',ucretli:'Ücretli'};
-const DEF_SETTINGS={warrantyMonths:24,slaDays:7,businessDays:true,saturdayWork:false,holidays:[],reportEmail:'',reportNote:'',storeName:'',storePhone:'',serviceWarnDays:15,waitDays:3,requestNotifyEmail:'',smsTpl:{}};
+const DEF_SETTINGS={warrantyMonths:24,slaDays:7,businessDays:true,saturdayWork:false,holidays:[],reportEmail:'',signupEmail:'',reportNote:'',storeName:'',storePhone:'',serviceWarnDays:15,waitDays:3,requestNotifyEmail:'',smsTpl:{}};
 const COLS=['tickets','firms','customers','categories','products','requests','branches','shipments','announcements'];
 const S={tickets:[],firms:[],customers:[],categories:[],products:[],requests:[],branches:[],shipments:[],announcements:[],imp:null,rq:'',rFrom:'',rPurpose:'',rQuick:'',rEditing:null,shipDraft:null,settings:{...DEF_SETTINGS},hol:new Set(),loaded:{},
   db:null,user:null,assets:null,downloads:null,sample:null,me:null,names:{},canWrite:true,
@@ -2293,9 +2293,10 @@ function renderDefs(){
       <form class="body" id="mail-form">
         <div class="field"><label for="m-report">Günlük rapor alıcısı</label><input id="m-report" type="email" value="${esc(st.reportEmail||'')}" placeholder="ornek@gmail.com" ${S.isAdmin?'':'disabled'}></div>
         <div class="field"><label for="m-req">Yeni ürün talebi bildirimi</label><input id="m-req" type="email" value="${esc(st.requestNotifyEmail||'')}" placeholder="Boşsa rapor alıcısına gider" ${S.isAdmin?'':'disabled'}></div>
+        <div class="field"><label for="m-signup">Yeni kayıt onayı</label><input id="m-signup" type="email" value="${esc(st.signupEmail||'')}" placeholder="Boşsa rapor alıcısına gider" ${S.isAdmin?'':'disabled'}><span class="hint">Biri kayıt olunca bu adrese “Kaydı incele ve onayla” bağlantılı e-posta gider; tek tıkla onaylarsınız.</span></div>
         <div class="field"><label for="m-wait">Mağazada bekleme uyarısı</label><div class="inline" style="align-items:center"><input id="m-wait" type="number" min="1" max="60" value="${esc(st.waitDays||3)}" style="max-width:90px" ${S.canWrite?'':'disabled'}><span class="hint">gün sonra kartta uyarı ve hatırlatma SMS'i</span></div></div>
         ${S.isAdmin?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary small" type="submit">Kaydet</button><button class="btn small" type="button" data-act="report-now">Raporu şimdi gönder</button><button class="btn small" type="button" data-act="mail-test">Deneme e-postası</button></div>`:''}
-        <p class="hint" style="margin:0">Satıcılara giden e-postalar: kayıt doğrulama, şifre sıfırlama, talebin “Talep Edildi”, “Yolda”, “Şubeye Geldi” ve “Karşılanamadı” durumları.</p>
+        <p class="hint" style="margin:0">Satıcılara giden e-postalar: kayıt doğrulama ve onay, şifre sıfırlama, talebin “Talep Edildi”, “Yolda”, “Şubeye Geldi” ve “Karşılanamadı” durumları.</p>
       </form>
     </section>
     ${defPanel('categories','Kategoriler','Her kategori için ayrı fatura süresi girebilirsiniz; boş bırakılırsa varsayılan süre geçerli olur.','<input class="inp" name="name" id="d-cat-name" placeholder="Örn. Züccaciye, Mobilya" required><input class="inp" name="slaDays" id="d-cat-sla" type="number" min="1" max="60" placeholder="Süre (isteğe bağlı)" style="flex:0 1 150px">',cats,()=>'')}
@@ -2856,12 +2857,13 @@ function lmode(m,msg,ok){document.querySelectorAll('.lmode').forEach(f=>f.hidden
 function showLogin(msg,ok){if(es){es.close();es=null}if(typeof leaveCall==='function'&&CALL.room)leaveCall(true);$('login').hidden=false;$('app').hidden=true;closeDrawer();if(typeof closeReq==='function')closeReq();lmode('login',msg,ok)}
 let branchInfo=null;
 async function loadBranchList(){try{if(!branchInfo){const r=await xreq('GET','/api/public/info');branchInfo=r.data||{}}
+  if(branchInfo.homeBranch)$('g-branch').value=branchInfo.homeBranch;
   $('dl-branches').innerHTML=(branchInfo.branches||[]).map(b=>`<option value="${esc(b)}"></option>`).join('')}catch(_){}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-lmode]');if(b&&b.closest('#login'))lmode(b.dataset.lmode)});
 function pendingNote(email,msg){const n=$('l-msg');n.className='lnote';n.innerHTML='';const p=document.createElement('div');p.textContent=msg;n.appendChild(p);
-  const b=document.createElement('button');b.type='button';b.className='btn small';b.textContent='Doğrulama e-postasını tekrar gönder';
+  const b=document.createElement('button');b.type='button';b.className='btn small';b.textContent='Onay e-postasını tekrar gönder';
   b.onclick=async()=>{b.disabled=true;try{const r=await xpost('/api/resend-verification',{email});const d=await r.json().catch(()=>({}));
-    p.textContent=r.ok?(d.mailSent?'Doğrulama e-postası tekrar gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin.':'E-posta şu an gönderilemedi. Yöneticiniz hesabınızı elle onaylayabilir.'):(d.error||'Gönderilemedi');n.className='lnote'+(r.ok&&d.mailSent?' ok':'')}catch(_){p.textContent='Sunucuya ulaşılamadı'}finally{b.disabled=false}};
+    p.textContent=r.ok?(d.mailSent?'Doğrulama e-postası tekrar gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin.':d.approvalSent?'Onay isteği yöneticiye tekrar e-postayla gönderildi. Onaylanınca giriş yapabilirsiniz.':'E-posta şu an gönderilemedi. Yöneticiniz hesabınızı uygulamadan onaylayabilir.'):(d.error||'Gönderilemedi');n.className='lnote'+(r.ok&&(d.mailSent||d.approvalSent)?' ok':'')}catch(_){p.textContent='Sunucuya ulaşılamadı'}finally{b.disabled=false}};
   n.appendChild(b)}
 $('lform').addEventListener('submit',async e=>{e.preventDefault();const b=$('l-btn');b.disabled=true;$('l-msg').textContent='';
   try{const r=await xpost('/api/login',{username:$('l-user').value,password:$('l-pass').value});
@@ -2876,7 +2878,8 @@ $('regform').addEventListener('submit',async e=>{e.preventDefault();const b=$('g
     if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Kayıt yapılamadı';return}
     $('regform').reset();lmode('login');$('l-user').value=email;
     if(d.mailSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. '+email+' adresine doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra giriş yapabilirsiniz.'}
-    else pendingNote(email,'Kaydınız alındı ancak doğrulama e-postası şu an gönderilemedi. Yöneticiniz hesabınızı onaylayınca giriş yapabilirsiniz.');
+    else if(d.approvalSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. Onay isteği yöneticiye e-postayla gönderildi; yönetici onaylayınca '+email+' ve şifrenizle giriş yapabilirsiniz.'}
+    else pendingNote(email,'Kaydınız alındı ancak onay e-postası şu an gönderilemedi. Yöneticiniz hesabınızı uygulamadan onaylayınca giriş yapabilirsiniz.');
   }catch(_){$('l-msg').className='lnote';$('l-msg').textContent='Sunucuya ulaşılamadı, tekrar deneyin.'}finally{b.disabled=false}});
 $('fgform').addEventListener('submit',async e=>{e.preventDefault();
   try{const r=await xpost('/api/forgot',{email:$('f-email').value});const d=await r.json().catch(()=>({}));
@@ -2889,10 +2892,10 @@ $('rsform').addEventListener('submit',async e=>{e.preventDefault();
     lmode('login','Yeni şifreniz kaydedildi, giriş yapabilirsiniz.',true)}catch(_){$('l-msg').textContent='Sunucuya ulaşılamadı'}});
 $('btn-logout').onclick=async()=>{try{await xpost('/api/logout')}catch(_){}showLogin('Çıkış yapıldı.')};
 $('btn-pw').onclick=()=>{const u=S.meUser||{};$('pw-modal').hidden=false;$('pw-msg').textContent='';$('pw-cur').value='';$('pw-new').value='';
-  $('pf-name').value=u.name||'';$('pf-phone').value=u.phone||'';$('pf-branch').value=u.branch||'';$('pf-email').value=u.email||'';$('pf-email').disabled=S.isSeller;
+  $('pf-name').value=u.name||'';$('pf-phone').value=u.phone||'';$('pf-branch').value=u.branch||'';$('pf-branch').disabled=S.isSeller;$('pf-email').value=u.email||'';$('pf-email').disabled=S.isSeller;
   refreshPush();installHint();$('pf-name').focus()};
 $('pf-form').addEventListener('submit',async e=>{e.preventDefault();
-  try{const u=await call('PATCH','/api/me',{name:$('pf-name').value,phone:$('pf-phone').value,branch:$('pf-branch').value,email:S.isSeller?undefined:$('pf-email').value});S.meUser={...S.meUser,...u};applyRole();toast('Bilgileriniz kaydedildi')}catch(err){$('pw-msg').textContent=errMsg(err)}});
+  try{const u=await call('PATCH','/api/me',{name:$('pf-name').value,phone:$('pf-phone').value,branch:S.isSeller?undefined:$('pf-branch').value,email:S.isSeller?undefined:$('pf-email').value});S.meUser={...S.meUser,...u};applyRole();toast('Bilgileriniz kaydedildi')}catch(err){$('pw-msg').textContent=errMsg(err)}});
 $('pw-cancel').onclick=()=>{$('pw-modal').hidden=true};
 $('pw-form').addEventListener('submit',async e=>{e.preventDefault();
   try{await call('POST','/api/me/password',{current:$('pw-cur').value,next:$('pw-new').value});$('pw-modal').hidden=true;toast('Şifreniz değiştirildi')}catch(err){$('pw-msg').textContent=errMsg(err)}});
@@ -2907,7 +2910,7 @@ function usersPanel(){
   const row=u=>`<li><div style="flex:1;min-width:0"><div class="nm">${esc(u.name)}${u.id===S.me?' (siz)':''}${u.status==='disabled'?' · <span style="color:var(--bad)">devre dışı</span>':''}</div><div class="sub">${esc([u.email||u.username,u.branch,u.phone].filter(Boolean).join(' · '))}</div></div>${u.status==='pending'?`<button class="btn small primary" type="button" data-uapprove="${esc(u.id)}">Onayla</button>`:roleSel(u.id,u.role)}${u.id===S.me?'':`<button class="btn small" type="button" data-upass="${esc(u.id)}">Şifre</button><button class="btn small danger" type="button" data-udel="${esc(u.id)}">Sil</button>`}</li>`;
   return `<section class="panel"><div class="panel-h"><h3>Kullanıcılar</h3><span>${S.users.length}</span><p>Satıcılar giriş ekranından kendileri kayıt olur ve e-postalarını doğrular; sadece Ürün Talepleri sayfasını görürler. Personel ve yöneticileri buradan ekleyin.</p></div>
     ${pend.length?`<div style="padding:10px 14px;background:var(--warn-soft);border-bottom:1px solid var(--line-2);font-size:.88rem"><b>${pend.length} kayıt e-posta doğrulaması bekliyor.</b> E-posta ulaşmadıysa “Onayla” ile hesabı siz açabilirsiniz.</div><ul class="list">${pend.map(row).join('')}</ul>`:''}
-    <form class="add" id="u-form"><input class="inp" id="u-username" placeholder="Kullanıcı adı" required autocomplete="off"><input class="inp" id="u-name" placeholder="Ad soyad" required><input class="inp" id="u-email" type="email" placeholder="E-posta (isteğe bağlı)"><input class="inp" id="u-branch" list="dl-branches" placeholder="Şube"><input class="inp" id="u-pass" placeholder="Şifre (en az 6)" required autocomplete="new-password"><select class="inp" id="u-role">${Object.entries(ROLE_LBL).map(([k,l])=>`<option value="${k}" ${k==='user'?'selected':''}>${l}</option>`).join('')}</select><button class="btn primary small" type="submit">Kullanıcı ekle</button></form>
+    <form class="add" id="u-form"><input class="inp" id="u-username" placeholder="Kullanıcı adı" required autocomplete="off"><input class="inp" id="u-name" placeholder="Ad soyad" required><input class="inp" id="u-email" type="email" placeholder="E-posta (isteğe bağlı)"><input class="inp" id="u-branch" list="dl-branches" placeholder="Şube (boşsa Ümraniye)"><input class="inp" id="u-pass" placeholder="Şifre (en az 6)" required autocomplete="new-password"><select class="inp" id="u-role">${Object.entries(ROLE_LBL).map(([k,l])=>`<option value="${k}" ${k==='user'?'selected':''}>${l}</option>`).join('')}</select><button class="btn primary small" type="submit">Kullanıcı ekle</button></form>
     <ul class="list">${[...others].sort(byName).map(row).join('')}</ul></section>`;
 }
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-uapprove]');if(!b)return;b.disabled=true;
@@ -3278,7 +3281,7 @@ $('ask-close').onclick=()=>{$('ask-modal').hidden=true};
 /* ================= ayarlar: e-posta ================= */
 document.addEventListener('submit',async e=>{if(e.target.id!=='mail-form')return;e.preventDefault();
   const w=Number($('m-wait').value);
-  try{await S.db.doc('settings/main').set({...S.settings,reportEmail:$('m-report').value.trim(),requestNotifyEmail:$('m-req').value.trim(),waitDays:w>0?w:3,updatedAt:iso()});toast('E-posta ayarları kaydedildi')}catch(err){toast(errMsg(err))}});
+  try{await S.db.doc('settings/main').set({...S.settings,reportEmail:$('m-report').value.trim(),requestNotifyEmail:$('m-req').value.trim(),signupEmail:$('m-signup').value.trim(),waitDays:w>0?w:3,updatedAt:iso()});toast('E-posta ayarları kaydedildi')}catch(err){toast(errMsg(err))}});
 document.addEventListener('click',async e=>{const a=e.target.closest('[data-act]');if(!a)return;
   if(a.dataset.act==='report-now'){a.disabled=true;try{const r=await call('POST','/api/report/send');toast(r&&r.ok?'Rapor gönderildi':'Rapor gönderilemedi. Rapor alıcısını kaydettiğinizden emin olun.')}catch(err){toast(errMsg(err))}finally{a.disabled=false}}
   if(a.dataset.act==='mail-test'){const to=$('m-report').value.trim()||(S.meUser&&S.meUser.email)||'';if(!to){toast('Önce rapor alıcısı e-postasını yazın');return}a.disabled=true;

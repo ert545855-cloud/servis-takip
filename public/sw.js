@@ -13,7 +13,7 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/takip/')) return;
+  if (url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/takip/') || url.pathname.startsWith('/onay/')) return;
   if (req.mode === 'navigate') {
     // önce ağ; sunucu uykudan uyanırken 6 sn içinde cevap gelmezse kayıtlı uygulama kabuğu açılır
     e.respondWith((async () => {

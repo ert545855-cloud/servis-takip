@@ -136,6 +136,9 @@ async function migrate() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_expires TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_before TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS approve_token TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS approve_expires TIMESTAMPTZ;
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_uq ON users (lower(email)) WHERE email IS NOT NULL;
     CREATE TABLE IF NOT EXISTS sessions (
       token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at TIMESTAMPTZ NOT NULL);
@@ -174,6 +177,7 @@ async function migrate() {
     } catch (e) { console.error('SEED_JSON okunamadı:', e.message); }
   }
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
+  await homeBranchMigrate();
   await purgeTrash();
   await chat.migrate();
   await tables.restore();
@@ -207,6 +211,32 @@ async function migrateFromOld() {
     for (const f of files.rows) await pool.query('INSERT INTO files (id, name, type, size, data, uploaded_by, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING', [f.id, f.name, f.type, f.size, f.data, f.uploaded_by, f.created_at]);
     console.log(`Eski veritabanından taşındı: ${docs.rows.length} belge, ${users.rows.length} kullanıcı, ${files.rows.length} dosya`);
   } catch (e) { console.error('Eski veritabanından taşıma başarısız:', e.message); } finally { await old.end().catch(() => {}); }
+}
+/* mağaza tek şube: kayıt olan herkes ana şubeden (Ümraniye) sayılır. Şube listesinde "Ümraniye ..." diye bir kayıt varsa o ad kullanılır. */
+const HOME_BRANCH_BASE = String(process.env.HOME_BRANCH || 'Ümraniye').trim();
+const brKey = s => String(s || '').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ı/g, 'i').replace(/\s+/g, ' ').trim();
+let homeBr = { name: HOME_BRANCH_BASE, at: 0 };
+async function homeBranch() {
+  if (Date.now() - homeBr.at < 60e3) return homeBr.name;
+  try {
+    const { rows } = await pool.query("SELECT data->>'name' AS name FROM docs WHERE coll='branches'");
+    const k = brKey(HOME_BRANCH_BASE); const names = rows.map(r => r.name).filter(Boolean).sort((a, b) => a.length - b.length);
+    homeBr = { name: names.find(n => brKey(n) === k) || names.find(n => brKey(n).startsWith(k)) || HOME_BRANCH_BASE, at: Date.now() };
+  } catch { /* önceki değer kalır */ }
+  return homeBr.name;
+}
+/* bir kerelik: mevcut kullanıcılar ve onların talepleri ana şubeye alınır (eski değer saklanır) */
+async function homeBranchMigrate() {
+  try {
+    const done = await pool.query("SELECT 1 FROM meta WHERE key = 'home_branch_v1'");
+    if (done.rows.length) return;
+    const hb = await homeBranch();
+    const u = await pool.query('UPDATE users SET branch_before = branch, branch = $1 WHERE branch IS DISTINCT FROM $1 RETURNING id', [hb]);
+    const r = await pool.query(`UPDATE docs SET data = jsonb_set(data || jsonb_build_object('toBranchBefore', COALESCE(data->'toBranch', 'null'::jsonb)), '{toBranch}', to_jsonb($1::text)), updated_at = now()
+      WHERE coll = 'requests' AND COALESCE(data->>'toBranch', '') <> $1 RETURNING id`, [hb]);
+    await pool.query("INSERT INTO meta (key, value) VALUES ('home_branch_v1', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify({ branch: hb, users: u.rowCount, requests: r.rowCount, at: new Date().toISOString() })]);
+    console.log(`Şube düzeltmesi: ${u.rowCount} kullanıcı ve ${r.rowCount} talep "${hb}" şubesine alındı`);
+  } catch (e) { console.error('Şube düzeltmesi yapılamadı:', e.message); }
 }
 async function getDoc(coll, id) { const { rows } = await pool.query('SELECT data FROM docs WHERE coll=$1 AND id=$2', [coll, id]); return rows[0] ? { id, ...rows[0].data } : null; }
 async function getSettings() { return (await getDoc('settings', 'main')) || {}; }
@@ -426,7 +456,7 @@ function limited(key, max, windowMs) {
 /* herkese açık bilgiler */
 app.get('/api/public/info', wrap(async (req, res) => {
   const { rows } = await pool.query("SELECT data->>'name' AS name FROM docs WHERE coll='branches' ORDER BY 1");
-  res.json({ appName: APP_NAME, branches: rows.map(r => r.name).filter(Boolean), mailEnabled: mailEnabled() });
+  res.json({ appName: APP_NAME, branches: rows.map(r => r.name).filter(Boolean), homeBranch: await homeBranch(), mailEnabled: mailEnabled() });
 }));
 
 /* giriş / kayıt */
@@ -436,7 +466,7 @@ app.post('/api/login', express.json({ limit: '10kb' }), wrap(async (req, res) =>
   const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 OR lower(email) = $1 LIMIT 1', [id]);
   const u = rows[0];
   if (!u || !checkPass(req.body.password || '', u.pass)) return res.status(401).json({ error: 'Kullanıcı adı / e-posta veya şifre hatalı' });
-  if (u.status === 'pending') return res.status(403).json({ error: 'E-posta adresiniz henüz doğrulanmadı. Gelen kutunuzdaki bağlantıya tıklayın.', pending: true, email: u.email });
+  if (u.status === 'pending') return res.status(403).json({ error: 'Hesabınız henüz onaylanmadı. Yönetici e-postayla gelen onay bağlantısından onaylayınca giriş yapabilirsiniz.', pending: true, email: u.email });
   if (u.status !== 'active') return res.status(403).json({ error: 'Hesabınız devre dışı. Yöneticinize başvurun.' });
   tries.delete('login:' + req.ip);
   const token = crypto.randomBytes(32).toString('hex');
@@ -456,42 +486,61 @@ async function sendVerify(req, u, token) {
     html: mailLayout(`Hoş geldiniz ${u.name}`, '<p>Hesabınızı etkinleştirmek için e-posta adresinizi doğrulayın. Bağlantı 48 saat geçerlidir.</p>', { url, label: 'E-postamı doğrula' }),
     text: `Hesabınızı etkinleştirmek için bu bağlantıyı açın: ${url}` });
 }
+/* kayıt onayı e-postayla: yöneticiye "Kaydı incele ve onayla" bağlantısı gider (satıcının kendi adresine e-posta gidemese de çalışır) */
+async function signupApprovers() {
+  const st = await getSettings();
+  const pick = [st.signupEmail, st.reportEmail].map(x => String(x || '').trim().toLowerCase()).find(validEmail);
+  if (pick) return [pick];
+  const { rows } = await pool.query("SELECT email FROM users WHERE role = 'admin' AND status = 'active' AND email IS NOT NULL");
+  return [...new Set(rows.map(r => String(r.email).toLowerCase()).filter(validEmail))].slice(0, 5);
+}
+async function sendApproval(req, u, token) {
+  const tos = await signupApprovers(); if (!tos.length || !mailEnabled()) return false;
+  const url = `${baseUrl(req)}/onay/${token}`;
+  const row = (k, v) => v ? `<tr><td style="padding:4px 14px 4px 0;color:#6b7b78">${esc(k)}</td><td style="padding:4px 0"><b>${esc(v)}</b></td></tr>` : '';
+  const html = mailLayout('Yeni kayıt onay bekliyor', `<p>Uygulamaya yeni bir satıcı kayıt oldu. Bilgiler doğruysa hesabı onaylayın; onaylanınca giriş yapabilir.</p>
+    <table style="border-collapse:collapse;font-size:14px">${row('Ad soyad', u.name)}${row('E-posta', u.email)}${row('Telefon', u.phone)}${row('Şube', u.branch)}</table>
+    <p style="font-size:13px;color:#6b7b78">Bağlantı 7 gün geçerlidir. Uygulamada Tanımlar › Kullanıcılar bölümünden de onaylayabilirsiniz.</p>`, { url, label: 'Kaydı incele ve onayla' });
+  let ok = false;
+  for (const to of tos) { const r = await sendMail({ to, subject: `Yeni kayıt onayı: ${u.name}`, html, text: `${u.name} (${u.email}) kayıt oldu. İncelemek ve onaylamak için: ${url}` }); ok = ok || r.ok; }
+  return ok;
+}
 app.post('/api/register', express.json({ limit: '10kb' }), wrap(async (req, res) => {
   if (limited('reg:' + req.ip, 8, 60 * 60e3)) return res.status(429).json({ error: 'Çok fazla kayıt denemesi, bir saat sonra tekrar deneyin' });
   const name = String(req.body.name || '').trim().slice(0, 80);
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
-  const branch = String(req.body.branch || '').trim().slice(0, 80);
+  const branch = await homeBranch(); // kayıt olan herkes ana şubeden sayılır
   const phone = String(req.body.phone || '').trim().slice(0, 30);
   if (name.length < 2) return res.status(400).json({ error: 'Ad soyad girin' });
   if (!validEmail(email)) return res.status(400).json({ error: 'Geçerli bir e-posta adresi girin' });
   if (password.length < 6) return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
-  if (!branch) return res.status(400).json({ error: 'Çalıştığınız şubeyi seçin' });
   const ex = await pool.query('SELECT id, status FROM users WHERE lower(email) = $1 OR username = $1', [email]);
   if (ex.rows[0]) return res.status(400).json({ error: ex.rows[0].status === 'pending' ? 'Bu e-posta ile kayıt var, doğrulama bekleniyor. Aşağıdan doğrulama e-postasını tekrar isteyebilirsiniz.' : 'Bu e-posta adresiyle zaten bir hesap var. Giriş yapın veya şifrenizi sıfırlayın.' });
-  const id = newId(); const token = crypto.randomBytes(24).toString('hex');
-  await pool.query(`INSERT INTO users (id, username, name, pass, role, email, status, branch, phone, verify_token, verify_expires) VALUES ($1,$2,$3,$4,'satici',$2,'pending',$5,$6,$7, now() + interval '48 hours')`, [id, email, name, hashPass(password), branch, phone, token]);
-  const r = await sendVerify(req, { name, email }, token);
+  const id = newId(); const token = crypto.randomBytes(24).toString('hex'); const atok = crypto.randomBytes(24).toString('hex');
+  await pool.query(`INSERT INTO users (id, username, name, pass, role, email, status, branch, phone, verify_token, verify_expires, approve_token, approve_expires) VALUES ($1,$2,$3,$4,'satici',$2,'pending',$5,$6,$7, now() + interval '48 hours', $8, now() + interval '7 days')`, [id, email, name, hashPass(password), branch, phone, token, atok]);
+  const [r, approvalSent] = await Promise.all([sendVerify(req, { name, email }, token), sendApproval(req, { name, email, phone, branch }, atok)]);
   broadcast({ type: 'user', user: { id, username: email, name, role: 'satici', email, branch, phone, status: 'pending' } });
-  pushStaff({ title: 'Yeni kayıt', body: `${name} (${branch}) kayıt oldu`, url: `${baseUrl(req)}/#tanimlar` });
-  res.json({ ok: true, mailSent: r.ok });
+  pushStaff({ title: 'Yeni kayıt', body: `${name} (${branch}) kayıt oldu, onayınızı bekliyor`, url: `${baseUrl(req)}/#tanimlar` });
+  res.json({ ok: true, mailSent: r.ok, approvalSent });
 }));
 app.post('/api/resend-verification', express.json({ limit: '10kb' }), wrap(async (req, res) => {
   if (limited('resend:' + req.ip, 5, 60 * 60e3)) return res.status(429).json({ error: 'Çok fazla istek, daha sonra tekrar deneyin' });
   const email = String(req.body.email || '').trim().toLowerCase();
   const { rows } = await pool.query("SELECT * FROM users WHERE lower(email) = $1 AND status = 'pending'", [email]);
-  let sent = false;
+  let sent = false, approvalSent = false;
   if (rows[0]) {
-    const token = crypto.randomBytes(24).toString('hex');
-    await pool.query("UPDATE users SET verify_token = $1, verify_expires = now() + interval '48 hours' WHERE id = $2", [token, rows[0].id]);
+    const token = crypto.randomBytes(24).toString('hex'); const atok = rows[0].approve_token && rows[0].approve_expires > new Date() ? rows[0].approve_token : crypto.randomBytes(24).toString('hex');
+    await pool.query("UPDATE users SET verify_token = $1, verify_expires = now() + interval '48 hours', approve_token = $3, approve_expires = GREATEST(COALESCE(approve_expires, now()), now() + interval '7 days') WHERE id = $2", [token, rows[0].id, atok]);
     sent = (await sendVerify(req, rows[0], token)).ok;
+    if (!sent) approvalSent = await sendApproval(req, rows[0], atok);
   }
-  res.json({ ok: true, mailSent: sent });
+  res.json({ ok: true, mailSent: sent, approvalSent });
 }));
 app.get('/api/verify', wrap(async (req, res) => {
   const token = String(req.query.token || '');
   if (!/^[a-f0-9]{48}$/.test(token)) return res.redirect('/?verified=0');
-  const { rows } = await pool.query("UPDATE users SET email_verified = true, status = 'active', verify_token = NULL WHERE verify_token = $1 AND verify_expires > now() RETURNING id, username, name, role, email, branch, phone, status", [token]);
+  const { rows } = await pool.query("UPDATE users SET email_verified = true, status = 'active', verify_token = NULL, approve_token = NULL WHERE verify_token = $1 AND verify_expires > now() RETURNING id, username, name, role, email, branch, phone, status", [token]);
   if (!rows[0]) return res.redirect('/?verified=0');
   broadcast({ type: 'user', user: rows[0] });
   res.redirect('/?verified=1');
@@ -526,7 +575,8 @@ app.post('/api/me/password', express.json({ limit: '10kb' }), wrap(auth), wrap(a
 app.patch('/api/me', express.json({ limit: '10kb' }), wrap(auth), wrap(async (req, res) => {
   const name = String(req.body.name || req.user.name).trim().slice(0, 80) || req.user.name;
   const phone = String(req.body.phone ?? req.user.phone ?? '').trim().slice(0, 30);
-  const branch = String(req.body.branch ?? req.user.branch ?? '').trim().slice(0, 80);
+  // satıcı şubesini kendisi değiştiremez (yönetici Kullanıcılar bölümünden değiştirebilir)
+  const branch = req.user.role === 'satici' ? (req.user.branch || await homeBranch()) : (String(req.body.branch ?? req.user.branch ?? '').trim().slice(0, 80) || await homeBranch());
   let email = req.user.email;
   if (req.body.email != null && req.user.role !== 'satici') {
     const e = String(req.body.email).trim().toLowerCase();
@@ -671,7 +721,7 @@ async function writeDoc(req, res, mode) {
     if (old) { data.requesterId = old.requesterId; data.requesterName = old.requesterName; data.requesterEmail = old.requesterEmail; data.toBranch = old.toBranch; data.no = old.no; data.createdAt = old.createdAt; }
     else {
       const self = req.user.role === 'satici' || !data.requesterId;
-      if (self) { data.requesterId = req.user.id; data.requesterName = req.user.name; data.requesterEmail = req.user.email || null; data.toBranch = req.user.branch || data.toBranch || null; }
+      if (self) { data.requesterId = req.user.id; data.requesterName = req.user.name; data.requesterEmail = req.user.email || null; data.toBranch = req.user.branch || await homeBranch(); }
       data.createdAt = data.createdAt || new Date().toISOString();
       if (!data.no) data.no = 'TLP-' + istNow().date.slice(2).replace(/-/g, '') + '-' + id.replace(/[^a-z0-9]/gi, '').slice(-4).toUpperCase();
     }
@@ -992,7 +1042,7 @@ app.post('/api/users', express.json({ limit: '10kb' }), wrap(auth), isAdmin, wra
   const password = String(req.body.password || '');
   const role = ROLES.has(req.body.role) ? req.body.role : 'user';
   const email = String(req.body.email || '').trim().toLowerCase() || null;
-  const branch = String(req.body.branch || '').trim() || null;
+  const branch = String(req.body.branch || '').trim() || await homeBranch();
   if (!/^[a-z0-9._@+-]{3,64}$/.test(username)) return res.status(400).json({ error: 'Kullanıcı adı 3-64 karakter olmalı; harf, rakam, nokta, tire kullanın' });
   if (!name) return res.status(400).json({ error: 'Ad soyad girin' });
   if (password.length < 6) return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
@@ -1012,7 +1062,7 @@ app.patch('/api/users/:id', express.json({ limit: '10kb' }), wrap(auth), isAdmin
   const name = req.body.name != null ? String(req.body.name).trim() || u.name : u.name;
   const role = ROLES.has(req.body.role) ? req.body.role : u.role;
   const status = ['active', 'pending', 'disabled'].includes(req.body.status) ? req.body.status : u.status;
-  const branch = req.body.branch != null ? String(req.body.branch).trim() || null : u.branch;
+  const branch = req.body.branch != null ? String(req.body.branch).trim() || await homeBranch() : u.branch;
   if (u.id === req.user.id && (role !== 'admin' || status !== 'active')) return res.status(400).json({ error: 'Kendi yönetici hesabınızı kısıtlayamazsınız' });
   let pass = u.pass;
   if (req.body.password) {
@@ -1020,7 +1070,8 @@ app.patch('/api/users/:id', express.json({ limit: '10kb' }), wrap(auth), isAdmin
     pass = hashPass(req.body.password);
   }
   if (req.body.password || status !== 'active' || role !== u.role) await pool.query('DELETE FROM sessions WHERE user_id = $1', [u.id]);
-  await pool.query('UPDATE users SET name=$1, role=$2, pass=$3, status=$4, branch=$5, email_verified = email_verified OR $6 WHERE id=$7', [name, role, pass, status, branch, status === 'active' && u.status === 'pending', u.id]); sessFlush();
+  await pool.query("UPDATE users SET name=$1, role=$2, pass=$3, status=$4, branch=$5, email_verified = email_verified OR $6, approve_token = CASE WHEN $4 = 'pending' THEN approve_token ELSE NULL END WHERE id=$7", [name, role, pass, status, branch, status === 'active' && u.status === 'pending', u.id]); sessFlush();
+  if (status === 'active' && u.status === 'pending') sendApproved(req, u);
   const out = publicUser({ ...u, name, role, status, branch });
   broadcast({ type: 'user', user: out });
   res.json(out);
@@ -1128,8 +1179,46 @@ app.post('/takip/:token/puan', express.urlencoded({ extended: false, limit: '4kb
   if (score <= 2) pushStaff({ title: `Düşük memnuniyet puanı: ${score}/5`, body: `${t.no} · ${t.customerName || ''} · ${t.firmName || ''}${comment ? ' · ' + comment.slice(0, 80) : ''}`, url: `${baseUrl(req)}/?k=${id}`, tag: 'rate-' + id });
   res.redirect(`/takip/${encodeURIComponent(req.params.token)}?ok=puan`);
 }));
-function publicPage(store, body, st) {
-  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ürün takibi · ${esc(store)}</title><meta name="robots" content="noindex">
+/* kayıt onayı: e-postadaki bağlantı önce bilgileri gösterir, onay/ret düğmeyle yapılır (bağlantı tarayıcılar ya da e-posta tarayıcıları tarafından açılsa bile kendiliğinden onaylanmaz) */
+function sendApproved(req, u) {
+  if (!u.email) return;
+  sendMail({ to: u.email, subject: `${APP_NAME}: hesabınız onaylandı`, html: mailLayout(`Hesabınız onaylandı`, `<p>Merhaba ${esc(u.name)}, hesabınız onaylandı. E-posta adresiniz ve şifrenizle giriş yapabilirsiniz.</p>`, { url: baseUrl(req) + '/', label: 'Giriş yap' }), text: `Hesabınız onaylandı: ${baseUrl(req)}/` }).catch(() => {});
+}
+const okTok = t => /^[a-f0-9]{48}$/.test(String(t || ''));
+app.get('/onay/:token', wrap(async (req, res) => {
+  const st = await getSettings(); res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Robots-Tag', 'noindex');
+  const page = (h, code) => res.status(code || 200).send(publicPage(st.storeName || APP_NAME, h, st, 'Kayıt onayı'));
+  if (!okTok(req.params.token)) return page('<h1>Bağlantı geçersiz</h1><p>Onay bağlantısı hatalı.</p>', 404);
+  const { rows } = await pool.query('SELECT name, email, phone, branch, status, created_at, approve_expires FROM users WHERE approve_token = $1', [req.params.token]);
+  const u = rows[0];
+  if (!u) return page('<h1>Bu kayıt zaten işlendi</h1><p>Hesap daha önce onaylanmış, reddedilmiş ya da bağlantı yenilenmiş olabilir. Güncel durumu uygulamada Tanımlar › Kullanıcılar bölümünde görebilirsiniz.</p>');
+  if (u.approve_expires < new Date()) return page('<h1>Bağlantının süresi dolmuş</h1><p>Kaydı uygulamada Tanımlar › Kullanıcılar bölümünden onaylayabilirsiniz.</p>');
+  const row = (k, v) => v ? `<tr><td style="padding:4px 14px 4px 0;color:var(--muted)">${esc(k)}</td><td><b>${esc(v)}</b></td></tr>` : '';
+  page(`<h1>Yeni kayıt onayı</h1><p class="no">Bu kişi uygulamaya satıcı olarak kayıt oldu. Onaylarsanız giriş yapabilir.</p>
+    <div class="box"><table style="border-collapse:collapse">${row('Ad soyad', u.name)}${row('E-posta', u.email)}${row('Telefon', u.phone)}${row('Şube', u.branch)}${row('Kayıt', new Date(u.created_at).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }))}</table></div>
+    <form method="post" action="/onay/${esc(req.params.token)}" style="align-items:flex-start"><button name="karar" value="onay" class="ok">Hesabı onayla</button><button name="karar" value="red" class="no">Reddet ve sil</button></form>`);
+}));
+app.post('/onay/:token', express.urlencoded({ extended: false, limit: '2kb' }), wrap(async (req, res) => {
+  if (limited('approve:' + req.ip, 30, 60 * 60e3)) return res.status(429).send('Çok fazla istek');
+  const st = await getSettings(); res.setHeader('Cache-Control', 'no-store');
+  const page = h => res.send(publicPage(st.storeName || APP_NAME, h, st, 'Kayıt onayı'));
+  if (!okTok(req.params.token)) return page('<h1>Bağlantı geçersiz</h1>');
+  if (req.body.karar === 'onay') {
+    const { rows } = await pool.query("UPDATE users SET status = 'active', approve_token = NULL, verify_token = NULL WHERE approve_token = $1 AND approve_expires > now() AND status = 'pending' RETURNING id, username, name, role, email, branch, phone, status", [req.params.token]);
+    if (!rows[0]) return page('<h1>Bu kayıt zaten işlendi</h1><p>Hesap daha önce onaylanmış ya da silinmiş olabilir.</p>');
+    sessFlush(); broadcast({ type: 'user', user: publicUser(rows[0]) }); sendApproved(req, rows[0]);
+    return page(`<div class="box okb"><h2>Hesap onaylandı</h2><p><b>${esc(rows[0].name)}</b> artık e-posta adresi ve şifresiyle giriş yapabilir.</p></div>`);
+  }
+  if (req.body.karar === 'red') {
+    const { rows } = await pool.query("DELETE FROM users WHERE approve_token = $1 AND status = 'pending' RETURNING id, name", [req.params.token]);
+    if (!rows[0]) return page('<h1>Bu kayıt zaten işlendi</h1>');
+    broadcast({ type: 'user-removed', id: rows[0].id });
+    return page(`<div class="box"><h2>Kayıt reddedildi</h2><p>${esc(rows[0].name)} adlı kayıt silindi.</p></div>`);
+  }
+  page('<h1>Bir seçim yapın</h1>');
+}));
+function publicPage(store, body, st, title) {
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title || 'Ürün takibi')} · ${esc(store)}</title><meta name="robots" content="noindex">
   <link rel="icon" href="/icon.svg"><style>
   :root{--bg:#EEF2F1;--fg:#15201E;--muted:#5A6B68;--line:#D3DDDB;--card:#fff;--acc:#0D6B68;--gold:#C9962B;--ok:#2E7D3A;--bad:#C0352A;--warn:#FBEBD2}
   @media (prefers-color-scheme:dark){:root{--bg:#0E1514;--fg:#E3ECEA;--muted:#97A9A6;--line:#2A3A38;--card:#151F1E;--acc:#3DB5AE;--ok:#62C26D;--bad:#F06C5F;--warn:#3A2B12}}
@@ -1171,6 +1260,19 @@ app.use((err, req, res, next) => {
 });
 
 setInterval(() => maybeDailyReport(false), 5 * 60e3);
+/* açılışta: onay bağlantısı hiç gönderilmemiş bekleyen kayıtlar için yöneticiye onay e-postası (her kayıt için bir kez) */
+async function kickPendingApprovals() {
+  const base = APP_URL || APP_URL_RAW(); if (!base || !mailEnabled()) return;
+  const { rows } = await pool.query("SELECT id, name, email, phone, branch FROM users WHERE status = 'pending' AND approve_token IS NULL AND role = 'satici' ORDER BY created_at LIMIT 10");
+  const fakeReq = { protocol: 'https', get: () => base.replace(/^https?:\/\//, '') };
+  for (const u of rows) {
+    const atok = crypto.randomBytes(24).toString('hex');
+    await pool.query("UPDATE users SET approve_token = $1, approve_expires = now() + interval '7 days' WHERE id = $2", [atok, u.id]);
+    await sendApproval(fakeReq, u, atok);
+  }
+  if (rows.length) console.log('Bekleyen kayıtlar için yöneticiye onay e-postası gönderildi:', rows.length);
+}
 migrate().then(() => {
   app.listen(PORT, () => console.log(`${APP_NAME} çalışıyor, port ${PORT} · e-posta: ${mailEnabled() ? 'açık' : 'kapalı'} · bildirim: ${pushReady ? 'açık' : 'kapalı'}`));
+  setTimeout(() => kickPendingApprovals().catch(e => console.warn('Onay e-postaları gönderilemedi', e.message)), 3000);
 }).catch(e => { console.error('Veritabanı hazırlanamadı:', e); process.exit(1); });
