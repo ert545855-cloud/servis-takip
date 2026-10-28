@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const zlib = require('zlib');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json', '.json': 'application/json; charset=utf-8', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json', '.json': 'application/json; charset=utf-8', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.wasm': 'application/wasm', '.gz': 'application/gzip' };
 const COMPRESS = /\.(html|js|css|svg|webmanifest|json|txt)$/i;
 const SKIP = new Set(['shield.json']);
 
@@ -14,7 +14,8 @@ function load(dir) {
     for (const n of fs.readdirSync(d)) {
       const f = path.join(d, n); const st = fs.statSync(f);
       if (st.isDirectory()) { walk(f, base + n + '/'); continue; }
-      if (/\.(br|gz)$/i.test(n) || SKIP.has(n) || n.startsWith('.')) continue;
+      // önceden sıkıştırılmış eşler (x.br / x.gz) yalnızca asıl dosya varsa atlanır; tek başına .gz dosyası olduğu gibi sunulur
+      if ((/\.(br|gz)$/i.test(n) && fs.existsSync(f.replace(/\.(br|gz)$/i, ''))) || SKIP.has(n) || n.startsWith('.')) continue;
       const raw = fs.readFileSync(f); const ext = path.extname(n).toLowerCase();
       const e = { raw, type: TYPES[ext] || 'application/octet-stream', tag: crypto.createHash('sha1').update(raw).digest('base64url').slice(0, 16) };
       if (COMPRESS.test(n) && raw.length > 1024) {

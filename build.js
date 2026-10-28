@@ -78,7 +78,7 @@ fs.writeFileSync(path.join(TMP, 'sw.js'), sw);
 let raw = 0, br = 0;
 const walk = d => { for (const n of fs.readdirSync(d)) { const f = path.join(d, n); if (fs.statSync(f).isDirectory()) { walk(f); continue; }
   if (!/\.(html|js|css|svg|webmanifest|json|txt)$/i.test(n)) continue; const b = fs.readFileSync(f); if (b.length <= 1024) continue;
-  const bz = zlib.brotliCompressSync(b, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: b.length } });
+  const bz = zlib.brotliCompressSync(b, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: b.length > 1500000 ? 9 : 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: b.length } });
   fs.writeFileSync(f + '.br', bz); fs.writeFileSync(f + '.gz', zlib.gzipSync(b, { level: 9 })); raw += b.length; br += bz.length; } };
 walk(TMP);
 fs.writeFileSync(path.join(TMP, 'shield.json'), JSON.stringify({ key: keyB64, kid, build, at: new Date().toISOString() }));

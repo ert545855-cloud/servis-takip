@@ -1486,7 +1486,7 @@ button.tl-seat.empty{cursor:pointer}button.tl-seat.empty:hover:not(:disabled) .a
       </div>
       <div id="d-history"></div>
       <div class="grid three">
-        <div class="field"><label for="f-code">Barkod / madde kodu</label><div class="inline"><input id="f-code" autocomplete="off" enterkeyhint="next" placeholder="Okutun veya yazın: E409088" style="font-family:var(--f-mono)"><button class="btn small scan" type="button" data-scan="f-code" title="Kamerayla okut" aria-label="Kamerayla okut"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8v8M11 8v8M14 8v8M17 8v8"/></svg></button></div></div>
+        <div class="field"><label for="f-code">Barkod / madde kodu</label><div class="inline"><input id="f-code" autocomplete="off" enterkeyhint="next" placeholder="Okutun veya yazın: R0042805, E409088" style="font-family:var(--f-mono)"><button class="btn small scan" type="button" data-scan="f-code" title="Kamerayla okut" aria-label="Kamerayla okut"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8v8M11 8v8M14 8v8M17 8v8"/></svg></button></div></div>
         <div class="field"><label for="f-product">Ürün adı</label><input id="f-product" list="dl-products" required placeholder="Örn. Bulaşık makinesi"></div>
         <div class="field"><label for="f-cat">Kategori</label><select id="f-cat" required></select></div>
         <div class="field full pinfo" id="d-pcode"></div>
@@ -1610,7 +1610,7 @@ button.tl-seat.empty{cursor:pointer}button.tl-seat.empty:hover:not(:disabled) .a
     <div class="r-banner" id="r-banner"></div>
     <div class="sec">
       <div class="grid">
-        <div class="field"><label for="r-code">Madde kodu / barkod</label><div class="inline"><input id="r-code" required autocomplete="off" enterkeyhint="next" placeholder="Okutun veya yazın: E409088" style="font-family:var(--f-mono);text-transform:uppercase"><button class="btn small scan" type="button" data-scan="r-code" title="Kamerayla okut" aria-label="Kamerayla okut"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8v8M11 8v8M14 8v8M17 8v8"/></svg></button></div></div>
+        <div class="field"><label for="r-code">Madde kodu / barkod</label><div class="inline"><input id="r-code" required autocomplete="off" enterkeyhint="next" placeholder="Okutun veya yazın: R0042805, E409088" style="font-family:var(--f-mono);text-transform:uppercase"><button class="btn small scan" type="button" data-scan="r-code" title="Kamerayla okut" aria-label="Kamerayla okut"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8v8M11 8v8M14 8v8M17 8v8"/></svg></button></div></div>
         <div class="field"><label for="r-product">Ürün adı</label><input id="r-product" required placeholder="Kod girince kendiliğinden dolar"></div>
         <div class="field full pinfo" id="r-pinfo"></div>
         <div class="field"><label for="r-qty">Adet</label><input id="r-qty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
@@ -2363,7 +2363,7 @@ function fillStatic(){
   $('f-cat').innerHTML=S.categories.length?'<option value="">Kategori seçin</option>'+optList(S.categories,'',null):'<option value="">Önce Tanımlar’dan kategori ekleyin</option>';
 }
 function openDrawer(t,preset){
-  if(!S.db)return;
+  if(!S.db)return;S.fBar='';LBL.tok++;
   S.editing=t||null;S.draft=t?null:{parts:[],attachments:[],id:S.db.collection('tickets').doc().id};
   fillStatic();
   $('d-title').textContent=t?(t.customerName||'Arıza kaydı'):'Yeni arıza kaydı';
@@ -2562,7 +2562,7 @@ $('tform').addEventListener('submit',async e=>{
     const customerId=await ensure('customers',v('f-customer'),{phone:v('f-phone')});
     const codeIn=v('f-code');const known=findProduct(codeIn);
     const pcode=known?(known.code||(isBarcode(codeIn)?'':codeIn.toUpperCase())):(codeIn&&!isBarcode(codeIn)?codeIn.toUpperCase():'');
-    const pbar=known?(known.barcode||(isBarcode(codeIn)?codeIn:'')):(isBarcode(codeIn)?codeIn:'');
+    const pbar=known?(known.barcode||(isBarcode(codeIn)?codeIn:'')||S.fBar||''):(isBarcode(codeIn)?codeIn:(S.fBar||''));
     const productId=await ensureProduct({name:v('f-product'),code:pcode,barcode:pbar,categoryId:catId,firmId,warrantyMonths:$('f-wmonths').value===''?null:Number($('f-wmonths').value)});
     const au=userByName(v('f-tech'));
     const opened=$('f-opened').value||today();const status=$('f-status').value;const old=S.editing;const amt=$('f-invamt').value;
@@ -2967,7 +2967,7 @@ function renderReq(){
 }
 function keepFocus(id,fn){const a=document.activeElement;const is=a&&a.id===id;const c=is?a.selectionStart:0;fn();if(is){const x=$(id);if(x){x.focus();try{x.setSelectionRange(c,c)}catch(_){}}}}
 function openReq(r){
-  S.rEditing=r||null;
+  S.rEditing=r||null;S.rBar='';LBL.tok++;
   $('r-status').innerHTML=REQ_ST.map(s=>`<option value="${s.k}">${s.t}</option>`).join('');
   const set=(id,v)=>{$(id).value=v??''};
   set('r-product',r?.productName);set('r-code',r?.productCode);set('r-qty',r?.qty||1);set('r-from',r?.fromBranch);set('r-customer',r?.customerName);set('r-cphone',r?.customerPhone);
@@ -3021,7 +3021,7 @@ $('rform-req').addEventListener('submit',async e=>{
   if(purpose==='musteri'&&!v('r-customer')){$('r-err').textContent='Müşteri için talepte müşteri adını yazın.';return}
   if(!r&&purpose==='musteri'){await reqDupCheck();if(S.rDup.length&&!S.rDupOk){S.rDupOk=true;$('r-err').textContent='Aynı müşteri için bu ürün zaten talep edilmiş. Yine de göndermek için tekrar basın.';$('r-save').textContent='Yine de gönder';$('r-dup').scrollIntoView({block:'center',behavior:'smooth'});return}}
   const rawCode=v('r-code');const rp=S._rprod&&((S._rprod.code&&S._rprod.code.toUpperCase()===rawCode.toUpperCase())||(S._rprod.barcode&&S._rprod.barcode===rawCode))?S._rprod:null;
-  const body={productName:v('r-product'),productCode:(rp&&rp.code?rp.code:rawCode).toUpperCase(),barcode:rp&&rp.barcode?rp.barcode:(isBarcode(rawCode)?rawCode:''),qty:Math.max(1,Number(v('r-qty'))||1),fromBranch:v('r-from'),purpose,
+  const body={productName:v('r-product'),productCode:(rp&&rp.code?rp.code:rawCode).toUpperCase(),barcode:rp&&rp.barcode?rp.barcode:(isBarcode(rawCode)?rawCode:(S.rBar||'')),qty:Math.max(1,Number(v('r-qty'))||1),fromBranch:v('r-from'),purpose,
     customerName:purpose==='musteri'?v('r-customer'):'',customerPhone:purpose==='musteri'?v('r-cphone'):'',neededBy:$('r-needed').value||null,priority:$('r-pri').value,note:v('r-note'),updatedAt:iso()};
   const b=$('r-save');b.disabled=true;$('r-err').textContent='';
   try{
@@ -3550,7 +3550,7 @@ function applyProduct(p,force){if(!p)return;const setIf=(id,v)=>{if(v&&(force||!
   setIf('f-product',p.name);if(p.categoryId&&S.categories.some(c=>c.id===p.categoryId)&&(force||!$('f-cat').value))$('f-cat').value=p.categoryId;
   setIf('f-firm',firmNameOf(p.firmId));if(p.warrantyMonths!=null&&p.warrantyMonths!==''&&$('f-wmonths').value==='')$('f-wmonths').value=p.warrantyMonths;
   renderLists();renderDrawerDyn();if($('f-smstpl').value!=='ozel')smsFill()}
-function onCode(force){const p=findProduct($('f-code').value);if(p)applyProduct(p,force&&!S.editing);pcodeInfo()}
+function onCode(force){const q=$('f-code').value.trim();const p=findProduct(q);if(p){applyProduct(p,force&&!S.editing);if(p.code&&isBarcode(q)){$('f-code').value=p.code;S.fBar=q}}else if(isBarcode(q))S.fBar='';pcodeInfo()}
 $('f-code').addEventListener('change',()=>onCode(true));
 $('f-code').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();onCode(true);($('f-product').value?$('f-customer').value?$('f-desc'):$('f-customer'):$('f-product')).focus()}});
 $('f-code').addEventListener('input',()=>{clearTimeout(window._pc);window._pc=setTimeout(()=>onCode(true),300)});
@@ -3586,7 +3586,7 @@ function productsPanel(catName,firmName,firmOpts){
       <div class="tbl" style="border:1px solid var(--line-2);border-radius:10px"><table style="min-width:560px"><thead><tr><th>Madde kodu</th><th>Barkod</th><th>Ürün adı</th><th>Kategori</th><th>Marka</th></tr></thead><tbody>${ok.slice(0,5).map(r=>`<tr><td class="nw" style="font-family:var(--f-mono)">${esc(r.code)}</td><td class="nw" style="font-family:var(--f-mono)">${esc(r.barcode)}</td><td>${esc(r.name)}</td><td>${esc(r.category)}</td><td>${esc(r.firm)}</td></tr>`).join('')}</tbody></table></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary small" type="button" data-act="pimp-run" ${ok.length?'':'disabled'}>${ok.length} ürünü kataloğa aktar</button><button class="btn small" type="button" data-act="pimp-cancel">Vazgeç</button></div></div>`}
   const catOpts=S.categories.length?'<option value="">Kategori</option>'+optList(S.categories,'',null):'<option value="">Önce kategori ekleyin</option>';
-  return `<section class="panel" id="prod-panel"><div class="panel-h"><h3>Ürün kataloğu</h3><span>${S.products.length}</span><p>Barkod veya madde kodu (ör. E409088) okutulunca ürün adı, kategori, marka ve garanti süresi kayda kendiliğinden dolar. Kayıt açarken yeni bir kod girilirse katalog kendini günceller. Mağaza programınızdan aldığınız ürün listesini Excel'den toplu yükleyebilirsiniz.</p></div>
+  return `<section class="panel" id="prod-panel"><div class="panel-h"><h3>Ürün kataloğu</h3><span>${S.products.length}</span><p>Barkod veya madde kodu (ör. R0042805, E409088) okutulunca ürün adı, kategori, marka ve garanti süresi kayda kendiliğinden dolar. Katalogda olmayan bir ürünün barkodunu kamerayla okuttuğunuzda fiyat etiketindeki madde kodu ve ürün adı da okunur ve kaydedince kataloğa eklenir. Kayıt açarken yeni bir kod girilirse katalog kendini günceller. Mağaza programınızdan aldığınız ürün listesini Excel'den toplu yükleyebilirsiniz.</p></div>
     ${S.canWrite?`<form class="add" id="prod-form" autocomplete="off"><input class="inp" id="pf-code" placeholder="Madde kodu" style="font-family:var(--f-mono);flex:0 1 130px"><input class="inp" id="pf-bar" placeholder="Barkod" inputmode="numeric" style="font-family:var(--f-mono);flex:0 1 150px"><input class="inp" id="pf-name" placeholder="Ürün adı" required><select class="inp" id="pf-cat">${catOpts}</select><select class="inp" id="pf-firm">${firmOpts}</select><input class="inp" id="pf-wm" type="number" min="0" max="120" placeholder="Garanti (ay)" style="flex:0 1 110px"><button class="btn primary small" type="submit" id="pf-save">${S.pedit?'Güncelle':'Ekle'}</button>${S.pedit?'<button class="btn small" type="button" data-act="pedit-cancel">Vazgeç</button>':''}</form>`:''}
     <div class="cat-tools"><input class="inp" id="pq" type="search" placeholder="Katalogda ara: ad, madde kodu, barkod" value="${esc(S.pq||'')}" aria-label="Katalogda ara">${S.canWrite&&['admin','user'].includes(S.meUser&&S.meUser.role)?`<label class="btn small" for="pimp-file">Excel'den ürün listesi yükle</label><input id="pimp-file" type="file" accept=".xlsx,.xls,.csv" hidden><button class="btn small" type="button" data-act="pimp-tpl">Şablon indir</button>`:''}</div>
     ${imp}
@@ -3621,31 +3621,104 @@ document.addEventListener('change',async e=>{
   const k=e.target.dataset&&e.target.dataset.pimpmap;if(k&&S.pimp){S.pimp.map[k]=e.target.value;schedule()}
 });
 
+/* ---------- etiket okuma (OCR) ---------- */
+let tessP=null,tessWP=null;
+function loadTess(){if(window.Tesseract)return Promise.resolve();if(tessP)return tessP;tessP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='/vendor/tess/tesseract.min.js';s.onload=res;s.onerror=()=>{tessP=null;rej(new Error('ocr'))};document.head.appendChild(s)});return tessP}
+function ocrWorker(){if(tessWP)return tessWP;tessWP=(async()=>{await loadTess();const w=await window.Tesseract.createWorker('tur',1,{workerPath:'/vendor/tess/worker.min.js',corePath:'/vendor/tess/',langPath:'/vendor/tess',workerBlobURL:false});await w.setParameters({preserve_interword_spaces:'1'});return w})();tessWP.catch(()=>{tessWP=null});return tessWP}
+/* barkodun okuma yönüne göre etiketi düzelt ve barkodun üst-solundaki yazı alanını kes */
+function labelCrop(src,pts,extra){const W0=src.width,H0=src.height;
+  let a,b;if(pts&&pts.length>=2){a=pts[0];b=pts[1]}else{a={x:W0*.35,y:H0*.5};b={x:W0*.65,y:H0*.5}}
+  const dx=b.x-a.x,dy=b.y-a.y;let L=Math.hypot(dx,dy);const ang=barAngle(src,a,b,Math.atan2(dy,dx))+(extra||0);
+  let cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;
+  let u0,u1,v0,v1;
+  if(!pts||pts.length<2||L<20){cx=W0/2;cy=H0/2;u0=-W0/2;u1=W0/2;v0=-H0/2;v1=H0/2;L=Math.max(W0,H0)}
+  else if(extra){u0=-1.4*L;u1=3.2*L;v0=-1.2*L;v1=2.6*L}else{u0=-3.2*L;u1=1.4*L;v0=-2.6*L;v1=1.2*L}
+  const W=u1-u0,H=v1-v0;const sc=Math.max(.5,Math.min(2.2,1800/W));
+  const out=document.createElement('canvas');out.width=Math.round(W*sc);out.height=Math.round(H*sc);
+  const c=out.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,out.width,out.height);
+  c.filter='grayscale(1) contrast(1.35)';c.scale(sc,sc);c.translate(-u0,-v0);c.rotate(-ang);c.translate(-cx,-cy);c.drawImage(src,0,0);
+  return out}
+function parseLabel(txt,bar){
+  const lines=String(txt||'').split(/\n+/).map(l=>l.replace(/[|_~«»“”"`´]+/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+  const fixD=s=>s.replace(/[OoDQ]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6');
+  let best=null;
+  const consider=(pre,dig,i,toks,l)=>{const d=fixD(dig);if(!/^\d{5,9}$/.test(d)||(dig.match(/\d/g)||[]).length<4)return;
+    let sc=10-i;if(toks.length<=2)sc+=6;if(pre.length===1)sc+=3;if(d.length>=6)sc+=2;if(/TL/i.test(l))sc-=8;
+    const code=pre.toLocaleUpperCase('tr-TR').replace('İ','I')+d;if(!best||sc>best.sc)best={code,i,sc}};
+  lines.forEach((l,i)=>{const toks=l.split(' ');const cand=toks.length>1&&toks.length<=3?[...toks,toks.join('')]:toks;cand.forEach(tok=>{const t=tok.replace(/[^A-Za-z0-9ÇĞİÖŞÜ|]/g,'');
+    const m1=t.match(/^([A-Za-zÇĞİÖŞÜ])([0-9OoDQIl|SBZG]{5,9})$/);if(m1)consider(m1[1],m1[2],i,toks,l);
+    const m2=t.match(/^([A-Za-zÇĞİÖŞÜ]{2,3})(\d[0-9OoDQIl|SBZG]{4,8})$/);if(m2&&!m1)consider(m2[1],m2[2],i,toks,l)})});
+  const bad=/(\bTL\b|TL\s*$|\d+[.,]\d{3}|\bAy\b|Nakit|Kredi|Fiyat|Kdv|KDV|Menşe|Mense|Tarih|Taksit|Peşin|Pesin|Dahil|Ödeme|Odeme)/i;
+  let name='';const start=best?best.i+1:0;
+  for(let i=start;i<Math.min(lines.length,start+4);i++){const l=lines[i];if(bad.test(l))continue;
+    const letters=(l.match(/[A-Za-zÇĞİÖŞÜçğıöşü]/g)||[]).length;if(letters<5||letters/l.replace(/\s/g,'').length<.6)continue;
+    if(bar&&l.replace(/\D/g,'').includes(String(bar).slice(-6)))continue;name=l;break}
+  name=name.replace(/^[^A-Za-zÇĞİÖŞÜçğıöşü0-9]+/,'').replace(/[^A-Za-zÇĞİÖŞÜçğıöşü0-9)]+$/,'').replace(/\s{2,}/g,' ').trim().slice(0,120);
+  return {code:best?best.code:'',name,lines}}
+async function readLabel(shot,bar){const w=await ocrWorker();
+  const run=async ex=>{const cv=labelCrop(shot.canvas,shot.pts,ex);const r=await w.recognize(cv);return parseLabel(r.data.text,bar)};
+  let r=await run(0);if(!r.code){const r2=await run(Math.PI);if(r2.code||(!r.name&&r2.name))r=r2}
+  return r}
+/* zxing döndürerek okuduğunda verdiği noktalar hatalı olabiliyor: kendimiz 90° döndürüp yeniden okuyup gerçek konumu buluruz */
+function fixPts(cv,text,pts){const W=cv.width,H=cv.height;
+  const ok=pts&&pts.length>=2&&pts.every(p=>p.x>=0&&p.y>=0&&p.x<=W&&p.y<=H)&&Math.abs(pts[1].x-pts[0].x)>=Math.abs(pts[1].y-pts[0].y);
+  if(ok||!window.ZXing)return pts;
+  const Z=window.ZXing;const F=Z.BarcodeFormat;const h=new Map();h.set(Z.DecodeHintType.POSSIBLE_FORMATS,[F.EAN_13,F.EAN_8,F.CODE_128,F.CODE_39,F.CODE_93,F.UPC_A,F.UPC_E,F.ITF,F.CODABAR].filter(x=>x!=null));
+  const mf=new Z.MultiFormatReader();mf.setHints(h);
+  for(const cw of [true,false]){const o=document.createElement('canvas');o.width=H;o.height=W;const g=o.getContext('2d');
+    if(cw){g.translate(H,0);g.rotate(Math.PI/2)}else{g.translate(0,W);g.rotate(-Math.PI/2)}g.drawImage(cv,0,0);
+    try{const r=mf.decodeWithState(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(o))));if(r.getText()!==text)continue;
+      return r.getResultPoints().slice(0,2).map(p=>cw?{x:p.getY(),y:H-p.getX()}:{x:W-p.getY(),y:p.getX()})}catch(_){}}
+  return null}
+
+/* barkod çizgilerinin eğiminden okuma yönünü ince ayarla (eğik tutulan etiketler için) */
+function barAngle(src,a,b,ang0){try{const L=Math.hypot(b.x-a.x,b.y-a.y);if(L<40)return ang0;const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;const S=Math.round(Math.min(260,L*.7));
+  const c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d',{willReadFrequently:true});const k=S/(L*.7);g.translate(S/2,S/2);g.scale(k,k);g.translate(-cx,-cy);g.drawImage(src,0,0);
+  const d=g.getImageData(0,0,S,S).data;const Y=new Float32Array(S*S);for(let i=0;i<S*S;i++)Y[i]=d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11;
+  let xx=0,yy=0,xy=0;for(let y=1;y<S-1;y++)for(let x=1;x<S-1;x++){const i=y*S+x;const gx=Y[i+1]-Y[i-1],gy=Y[i+S]-Y[i-S];xx+=gx*gx;yy+=gy*gy;xy+=gx*gy}
+  let t=.5*Math.atan2(2*xy,xx-yy);const coh=Math.sqrt((xx-yy)**2+4*xy*xy)/(xx+yy+1e-6);if(coh<.35)return ang0;
+  let df=((t-ang0)%Math.PI+Math.PI*1.5)%Math.PI-Math.PI/2;return Math.abs(df)<=Math.PI/7?ang0+df:ang0}catch(_){return ang0}}
+/* etiketten okunanları forma yaz (f: arıza kaydı, r: ürün talebi) */
+const LBL={tok:0};
+async function labelOcr(kind,bar,shot){if(!shot||!shot.canvas||!isBarcode(bar))return;
+  const info=$(kind==='f'?'d-pcode':'r-pinfo'),codeEl=$(kind==='f'?'f-code':'r-code'),nameEl=$(kind==='f'?'f-product':'r-product');const box=$(kind==='f'?'drawer':'rdrawer');
+  const tok=++LBL.tok;const still=()=>tok===LBL.tok&&!box.hidden;
+  info.className='field full pinfo new';info.innerHTML='<span><b>Etiket okunuyor…</b> Madde kodu ve ürün adı etiketten okunuyor.</span><span class="hint">İlk seferde okuma motoru indirilir (yaklaşık 3 MB), sonraki okumalar hızlıdır.</span>';
+  try{const r=await readLabel(shot,bar);if(!still())return;
+    const cur=codeEl.value.trim();if(cur&&cur!==bar)return;
+    if(!r.code&&!r.name){info.innerHTML=`<span>Etiketten kod okunamadı. Madde kodunu ve ürün adını yazın; kaydedince <b class="pc">${esc(bar)}</b> barkodu kataloğa eklenir.</span>`;return}
+    if(r.code){codeEl.value=r.code;S[kind+'Bar']=bar}
+    const nameSet=r.name&&!nameEl.value.trim();if(nameSet)nameEl.value=r.name;
+    info.className='field full pinfo ok';info.innerHTML=`<span>Etiketten okundu${r.code?`: <b class="pc">${esc(r.code)}</b>`:''}${r.name?` · <b>${esc(r.name)}</b>`:''}</span><span class="hint">Barkod ${esc(bar)} · Lütfen kontrol edin. Kaydedince kataloğa eklenir, bir dahaki okutmada anında dolar.</span>`;
+    try{navigator.vibrate&&navigator.vibrate([40,60,40])}catch(_){}
+    if(kind==='r')reqDupCheck();else if(nameSet){renderLists();renderDrawerDyn()}
+  }catch(e){if(still())info.innerHTML='<span>Etiket okunamadı (okuma motoru yüklenemedi). Bilgileri elle yazabilirsiniz.</span>'}}
 /* ================= kamerayla okutma ================= */
 let SC=null,zxP=null;
 function loadZX(){if(window.ZXing)return Promise.resolve();if(zxP)return zxP;zxP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='/vendor/zxing.min.js';s.onload=res;s.onerror=()=>{zxP=null;rej(new Error('zx'))};document.head.appendChild(s)});return zxP}
 function closeScanner(){if(SC){SC.done=true;clearTimeout(SC.raf);if(SC.stream)SC.stream.getTracks().forEach(t=>t.stop())}SC=null;const v=$('scan-video');try{v.pause();v.srcObject=null}catch(_){}$('scan-modal').hidden=true}
-function gotScan(text){text=String(text||'').trim();if(!SC||SC.done||!text)return;const cb=SC.cb;try{navigator.vibrate&&navigator.vibrate(60)}catch(_){}closeScanner();cb(text)}
+function grabFrame(){const v=$('scan-video');if(!v||!v.videoWidth)return null;const c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);return c}
+function gotScan(text,pts){text=String(text||'').trim();if(!SC||SC.done||!text)return;const cb=SC.cb;let shot=null;try{const c=pts!==undefined?grabFrame():null;if(c)shot={canvas:c,pts}}catch(_){}try{navigator.vibrate&&navigator.vibrate(60)}catch(_){}closeScanner();cb(text,shot)}
 function noCam(msg){$('scan-msg').textContent=msg;$('scan-wrap').hidden=true;setTimeout(()=>$('scan-manual').focus(),30)}
 async function openScanner(title,cb){
   closeScanner();const sc=SC={cb,done:false};
   $('scan-title').textContent=title||'Barkod / QR okut';$('scan-manual').value='';$('scan-msg').textContent='Kamera açılıyor…';$('scan-wrap').hidden=false;$('scan-modal').hidden=false;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia||!window.isSecureContext){noCam('Bu cihazda kamera kullanılamıyor. Kodu aşağıya yazabilir ya da barkod okuyucu tabancayla okutabilirsiniz.');return}
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
     if(sc!==SC||sc.done){stream.getTracks().forEach(t=>t.stop());return}
     sc.stream=stream;const v=$('scan-video');v.srcObject=stream;try{await v.play()}catch(_){}
-    $('scan-msg').textContent='Barkodu veya QR kodu çerçevenin içine getirin. Okununca kendiliğinden kapanır.';
+    $('scan-msg').textContent='Barkodu çerçeveye getirin; okununca kendiliğinden kapanır. Fiyat etiketinin tamamı görünürse madde kodu ve ürün adı da okunur.';
     let det=null;
     if('BarcodeDetector' in window){try{const f=await BarcodeDetector.getSupportedFormats();const want=['ean_13','ean_8','code_128','code_39','code_93','upc_a','upc_e','itf','codabar','qr_code','data_matrix'].filter(x=>f.includes(x));if(want.length)det=new BarcodeDetector({formats:want})}catch(_){det=null}}
-    if(det){const loop=async()=>{if(sc!==SC||sc.done)return;try{if(v.readyState>=2){const r=await det.detect(v);if(r&&r.length){gotScan(r[0].rawValue);return}}}catch(_){}sc.raf=setTimeout(loop,120)};loop();return}
+    if(det){const loop=async()=>{if(sc!==SC||sc.done)return;try{if(v.readyState>=2){const r=await det.detect(v);if(r&&r.length){const cp=r[0].cornerPoints;gotScan(r[0].rawValue,cp&&cp.length>=2?[{x:cp[0].x,y:cp[0].y},{x:cp[1].x,y:cp[1].y}]:null);return}}}catch(_){}sc.raf=setTimeout(loop,120)};loop();return}
     await loadZX();if(sc!==SC||sc.done)return;
     const Z=window.ZXing;const hints=new Map();const F=Z.BarcodeFormat;
     hints.set(Z.DecodeHintType.POSSIBLE_FORMATS,[F.EAN_13,F.EAN_8,F.CODE_128,F.CODE_39,F.CODE_93,F.UPC_A,F.UPC_E,F.ITF,F.CODABAR,F.QR_CODE,F.DATA_MATRIX].filter(x=>x!=null));hints.set(Z.DecodeHintType.TRY_HARDER,true);
     const mf=new Z.MultiFormatReader();mf.setHints(hints);const cv=document.createElement('canvas');const ctx=cv.getContext('2d',{willReadFrequently:true});
     const loop=()=>{if(sc!==SC||sc.done)return;
-      if(v.videoWidth){const w=Math.min(1024,v.videoWidth),h=Math.round(v.videoHeight*w/v.videoWidth);if(cv.width!==w){cv.width=w;cv.height=h}ctx.drawImage(v,0,0,w,h);
-        try{const r=mf.decodeWithState(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv))));if(r){gotScan(r.getText());return}}catch(_){}}
+      if(v.videoWidth){const w=Math.min(1280,v.videoWidth),h=Math.round(v.videoHeight*w/v.videoWidth);if(cv.width!==w){cv.width=w;cv.height=h}ctx.drawImage(v,0,0,w,h);
+        try{const r=mf.decodeWithState(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv))));if(r){let pts=null;try{const k=v.videoWidth/w;const p0=fixPts(cv,r.getText(),(r.getResultPoints()||[]).map(p=>({x:p.getX(),y:p.getY()})));pts=p0?p0.map(p=>({x:p.x*k,y:p.y*k})):null}catch(_){}gotScan(r.getText(),pts);return}}catch(_){}}
       sc.raf=setTimeout(loop,150)};loop();
   }catch(err){noCam(err&&err.name==='NotAllowedError'?'Kamera izni verilmedi. Tarayıcı ayarlarından bu siteye kamera izni verin ya da kodu aşağıya yazın.':'Kamera açılamadı. Kodu aşağıya yazabilirsiniz.')}
 }
@@ -3659,10 +3732,12 @@ window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
   if(!$('mdrawer').hidden&&$('drawer').hidden){e.stopPropagation();closeRemind();return}
   if(S.bulk&&$('drawer').hidden){e.stopPropagation();S.bulk=null;schedule()}},true);
 document.addEventListener('click',e=>{const b=e.target.closest('[data-scan]');if(!b)return;const id=b.dataset.scan;
-  openScanner(id==='r-code'?'Ürünün barkodunu okutun':'Ürünün barkodunu veya madde kodunu okutun',txt=>{const inp=$(id);if(/^https?:\/\//i.test(txt)){toast('Bu bir bağlantı kodu, ürün barkodu değil');return}inp.value=txt;if(id==='f-code'){onCode(true);$('f-customer').value?$('f-desc').focus():$('f-customer').focus()}else{rCodeLookup(true);$('r-product').focus()}})});
-function scanAny(){openScanner(S.isSeller?'Ürünün barkodunu okutun':'Fiş QR’ı, ürün barkodu veya madde kodu okutun',S.isSeller?(txt=>{if(!$('rdrawer').hidden&&S.rEditing)closeReq();if($('rdrawer').hidden)openReq(null);$('r-code').value=txt;rCodeLookup(true)}):globalScan)}
+  openScanner(id==='r-code'?'Ürünün barkodunu okutun':'Ürünün barkodunu veya madde kodunu okutun',(txt,shot)=>{const inp=$(id);if(/^https?:\/\//i.test(txt)){toast('Bu bir bağlantı kodu, ürün barkodu değil');return}inp.value=txt;
+    if(id==='f-code'){S.fBar='';onCode(true);const p=findProduct(txt);if(!p||!p.code)labelOcr('f',txt,shot);$('f-customer').value?$('f-desc').focus():$('f-customer').focus()}
+    else{S.rBar='';rCodeLookup(true).then(()=>{if(!S._rprod||!S._rprod.code)labelOcr('r',txt,shot)});$('r-product').focus()}})});
+function scanAny(){openScanner(S.isSeller?'Ürünün barkodunu okutun':'Fiş QR’ı, ürün barkodu veya madde kodu okutun',S.isSeller?((txt,shot)=>{if(!$('rdrawer').hidden&&S.rEditing)closeReq();if($('rdrawer').hidden)openReq(null);$('r-code').value=txt;S.rBar='';rCodeLookup(true).then(()=>{if(!S._rprod||!S._rprod.code)labelOcr('r',txt,shot)})}):globalScan)}
 $('btn-mscan').onclick=scanAny;
-function globalScan(text){
+function globalScan(text,shot){
   let m=text.match(/[?&]k=([A-Za-z0-9_-]+)/);if(m){const t=S.tickets.find(x=>x.id===m[1]);if(t){closeAllForScan();openDrawer(t);return}}
   m=text.match(/\/takip\/([a-z0-9]+)/);if(m){const t=S.tickets.find(x=>x.publicToken===m[1]);if(t){closeAllForScan();openDrawer(t);return}}
   const U=text.toUpperCase();
@@ -3677,7 +3752,7 @@ function globalScan(text){
   if(hits.length===1){openDrawer(hits[0]);toast('Bu ürünle açılmış eski kayıt');return}
   if(!S.canWrite){toast('Bu kodla kayıt bulunamadı');return}
   if(location.hash!=='#pano')location.hash='pano';
-  setTimeout(()=>{openDrawer(null,{code:text});toast(p?'Katalogda bulundu: '+p.name+' · yeni kayıt açılıyor':'Bu kodla kayıt yok · yeni kayıt açılıyor')},30)}
+  setTimeout(()=>{openDrawer(null,{code:text});toast(p?'Katalogda bulundu: '+p.name+' · yeni kayıt açılıyor':'Bu kodla kayıt yok · yeni kayıt açılıyor');if(!p||!p.code)labelOcr('f',text,shot)},30)}
 function closeAllForScan(){if(!$('drawer').hidden)closeDrawer();if(!$('mdrawer').hidden)closeRemind();if(!$('rdrawer').hidden)closeReq()}
 
 /* ================= toplu işlem ================= */

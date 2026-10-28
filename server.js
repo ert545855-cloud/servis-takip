@@ -696,6 +696,7 @@ async function writeDoc(req, res, mode) {
   broadcast({ type: 'doc', coll, id, doc });
   res.json(doc);
   if (coll === 'requests') onRequestChange(old, doc, req.user, req).catch(e => console.warn(e.message));
+  if (coll === 'requests') learnProduct(doc).catch(e => console.warn('Katalog öğrenme', e.message));
   if (coll === 'announcements' && !old) {
     const [sql, params] = annTargetsSql(doc);
     const n = params.length + 1;
@@ -752,6 +753,26 @@ app.post('/api/requests/dupcheck', express.json({ limit: '10kb' }), wrap(auth), 
   const list = await findDupRequests(b, String(b.exceptId || ''));
   res.json({ items: list.slice(0, 10) });
 }));
+
+/* talepte yazılan / etiketten okunan madde kodu + barkod + ürün adı kataloğa öğretilir (satıcılar dahil) */
+async function learnProduct(d) {
+  const code = String(d.productCode || '').trim().toUpperCase().slice(0, 40), bar = String(d.barcode || '').replace(/\s/g, '').slice(0, 40), name = String(d.productName || '').trim().slice(0, 160);
+  if (!name || (!code && !bar) || (bar && !/^\d{8,14}$/.test(bar))) return;
+  const { rows } = await pool.query("SELECT id, data FROM docs WHERE coll = 'products' AND ((data->>'code' <> '' AND upper(data->>'code') = $1) OR (data->>'barcode' <> '' AND data->>'barcode' = $2)) LIMIT 2", [code || '\u0000', bar || '\u0000']);
+  if (rows.length > 1) return;
+  const at = new Date().toISOString();
+  if (rows[0]) {
+    const p = rows[0].data; const patch = {};
+    if (code && !p.code) patch.code = code; if (bar && !p.barcode) patch.barcode = bar;
+    if (!Object.keys(patch).length) return;
+    const doc = await putDoc('products', rows[0].id, { ...p, ...patch, updatedAt: at });
+    broadcast({ type: 'doc', coll: 'products', id: rows[0].id, doc });
+    return;
+  }
+  const id = newId();
+  const doc = await putDoc('products', id, { name, ...(code ? { code } : {}), ...(bar ? { barcode: bar } : {}), createdAt: at, learned: true });
+  broadcast({ type: 'doc', coll: 'products', id, doc });
+}
 
 /* ürün kataloğu: barkod / madde kodu ile arama */
 function prodOut(id, p, cats, firms) { return { id, name: p.name, code: p.code || '', barcode: p.barcode || '', categoryId: p.categoryId || '', categoryName: (cats && cats.get(p.categoryId)) || '', firmId: p.firmId || '', firmName: (firms && firms.get(p.firmId)) || '', warrantyMonths: p.warrantyMonths ?? null }; }
