@@ -2293,9 +2293,9 @@ function renderDefs(){
       <form class="body" id="mail-form">
         <div class="field"><label for="m-report">Günlük rapor alıcısı</label><input id="m-report" type="email" value="${esc(st.reportEmail||'')}" placeholder="ornek@gmail.com" ${S.isAdmin?'':'disabled'}></div>
         <div class="field"><label for="m-req">Yeni ürün talebi bildirimi</label><input id="m-req" type="email" value="${esc(st.requestNotifyEmail||'')}" placeholder="Boşsa rapor alıcısına gider" ${S.isAdmin?'':'disabled'}></div>
-        <div class="field"><label for="m-signup">Yeni kayıt onayı</label><input id="m-signup" type="email" value="${esc(st.signupEmail||'')}" placeholder="Boşsa rapor alıcısına gider" ${S.isAdmin?'':'disabled'}><span class="hint">Biri kayıt olunca bu adrese “Kaydı incele ve onayla” bağlantılı e-posta gider; tek tıkla onaylarsınız.</span></div>
+        <div class="field"><label for="m-signup">Yeni kayıt onayı</label><input id="m-signup" type="email" value="${esc(st.signupEmail||'')}" placeholder="Boşsa rapor alıcısına gider" ${S.isAdmin?'':'disabled'}><span class="hint">Kayıt olan kişiye doğrulama e-postası gönderilemezse bu adrese “Kaydı incele ve onayla” bağlantılı e-posta gider.</span></div>
         <div class="field"><label for="m-wait">Mağazada bekleme uyarısı</label><div class="inline" style="align-items:center"><input id="m-wait" type="number" min="1" max="60" value="${esc(st.waitDays||3)}" style="max-width:90px" ${S.canWrite?'':'disabled'}><span class="hint">gün sonra kartta uyarı ve hatırlatma SMS'i</span></div></div>
-        ${S.isAdmin?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary small" type="submit">Kaydet</button><button class="btn small" type="button" data-act="report-now">Raporu şimdi gönder</button><button class="btn small" type="button" data-act="mail-test">Deneme e-postası</button></div>`:''}
+        ${S.isAdmin?`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary small" type="submit">Kaydet</button><button class="btn small" type="button" data-act="report-now">Raporu şimdi gönder</button><input class="inp" id="m-testto" type="email" placeholder="Deneme adresi (boşsa rapor alıcısı)" style="flex:1 1 200px;min-width:0"><button class="btn small" type="button" data-act="mail-test">Deneme e-postası</button></div>`:''}
         <p class="hint" style="margin:0">Satıcılara giden e-postalar: kayıt doğrulama ve onay, şifre sıfırlama, talebin “Talep Edildi”, “Yolda”, “Şubeye Geldi” ve “Karşılanamadı” durumları.</p>
       </form>
     </section>
@@ -2861,7 +2861,7 @@ async function loadBranchList(){try{if(!branchInfo){const r=await xreq('GET','/a
   $('dl-branches').innerHTML=(branchInfo.branches||[]).map(b=>`<option value="${esc(b)}"></option>`).join('')}catch(_){}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-lmode]');if(b&&b.closest('#login'))lmode(b.dataset.lmode)});
 function pendingNote(email,msg){const n=$('l-msg');n.className='lnote';n.innerHTML='';const p=document.createElement('div');p.textContent=msg;n.appendChild(p);
-  const b=document.createElement('button');b.type='button';b.className='btn small';b.textContent='Onay e-postasını tekrar gönder';
+  const b=document.createElement('button');b.type='button';b.className='btn small';b.textContent='Doğrulama e-postasını tekrar gönder';
   b.onclick=async()=>{b.disabled=true;try{const r=await xpost('/api/resend-verification',{email});const d=await r.json().catch(()=>({}));
     p.textContent=r.ok?(d.mailSent?'Doğrulama e-postası tekrar gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin.':d.approvalSent?'Onay isteği yöneticiye tekrar e-postayla gönderildi. Onaylanınca giriş yapabilirsiniz.':'E-posta şu an gönderilemedi. Yöneticiniz hesabınızı uygulamadan onaylayabilir.'):(d.error||'Gönderilemedi');n.className='lnote'+(r.ok&&(d.mailSent||d.approvalSent)?' ok':'')}catch(_){p.textContent='Sunucuya ulaşılamadı'}finally{b.disabled=false}};
   n.appendChild(b)}
@@ -2877,7 +2877,7 @@ $('regform').addEventListener('submit',async e=>{e.preventDefault();const b=$('g
     const d=await r.json().catch(()=>({}));
     if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Kayıt yapılamadı';return}
     $('regform').reset();lmode('login');$('l-user').value=email;
-    if(d.mailSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. '+email+' adresine doğrulama bağlantısı gönderdik. Bağlantıya tıkladıktan sonra giriş yapabilirsiniz.'}
+    if(d.mailSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. '+email+' adresine doğrulama bağlantısı gönderdik. Bağlantıya tıklayınca hesabınız açılır ve giriş yapabilirsiniz. E-posta birkaç dakika içinde gelmezse istenmeyen (spam) klasörüne bakın.'}
     else if(d.approvalSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. Onay isteği yöneticiye e-postayla gönderildi; yönetici onaylayınca '+email+' ve şifrenizle giriş yapabilirsiniz.'}
     else pendingNote(email,'Kaydınız alındı ancak onay e-postası şu an gönderilemedi. Yöneticiniz hesabınızı uygulamadan onaylayınca giriş yapabilirsiniz.');
   }catch(_){$('l-msg').className='lnote';$('l-msg').textContent='Sunucuya ulaşılamadı, tekrar deneyin.'}finally{b.disabled=false}});
@@ -3284,8 +3284,8 @@ document.addEventListener('submit',async e=>{if(e.target.id!=='mail-form')return
   try{await S.db.doc('settings/main').set({...S.settings,reportEmail:$('m-report').value.trim(),requestNotifyEmail:$('m-req').value.trim(),signupEmail:$('m-signup').value.trim(),waitDays:w>0?w:3,updatedAt:iso()});toast('E-posta ayarları kaydedildi')}catch(err){toast(errMsg(err))}});
 document.addEventListener('click',async e=>{const a=e.target.closest('[data-act]');if(!a)return;
   if(a.dataset.act==='report-now'){a.disabled=true;try{const r=await call('POST','/api/report/send');toast(r&&r.ok?'Rapor gönderildi':'Rapor gönderilemedi. Rapor alıcısını kaydettiğinizden emin olun.')}catch(err){toast(errMsg(err))}finally{a.disabled=false}}
-  if(a.dataset.act==='mail-test'){const to=$('m-report').value.trim()||(S.meUser&&S.meUser.email)||'';if(!to){toast('Önce rapor alıcısı e-postasını yazın');return}a.disabled=true;
-    try{const r=await call('POST','/api/mail/test',{to});toast(r&&r.ok?to+' adresine deneme e-postası gönderildi':'E-posta gönderilemedi. Gönderici alan adı doğrulanmamış olabilir.')}catch(err){toast(errMsg(err))}finally{a.disabled=false}}});
+  if(a.dataset.act==='mail-test'){const to=($('m-testto')&&$('m-testto').value.trim())||$('m-report').value.trim()||(S.meUser&&S.meUser.email)||'';if(!to){toast('Deneme için bir e-posta adresi yazın');return}a.disabled=true;
+    try{const r=await call('POST','/api/mail/test',{to});toast(r&&r.ok?to+' adresine deneme e-postası gönderildi':'E-posta gönderilemedi. E-posta hizmeti bu adrese gönderime izin vermiyor olabilir.')}catch(err){toast(errMsg(err))}finally{a.disabled=false}}});
 
 /* ================= uygulama olarak yükleme ve bildirimler ================= */
 let installEvt=null;

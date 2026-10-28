@@ -13,6 +13,8 @@
  *   BIRD_API_KEY     Bird e-posta API anahtarı (bk_eu1_… / bk_us1_…)
  *   MAIL_FROM        Gönderen adres (varsayılan onboarding@messagebird.dev)
  *   MAIL_FROM_NAME   Gönderen adı (varsayılan "Ümraniye Şampiyonları")
+ *   BREVO_API_KEY    Brevo API anahtarı (xkeysib-…): Bird'ün ulaştıramadığı adreslere (ör. kayıt doğrulama) Brevo'dan gönderilir
+ *   BREVO_SENDER     Brevo'da doğrulanmış gönderen adresi (boşsa hesaptaki ilk etkin gönderen kullanılır)
  *   VAPID_PUBLIC / VAPID_PRIVATE / VAPID_SUBJECT   Telefon bildirimleri için anahtarlar
  *   OLD_DATABASE_URL / OLD_DB_SCHEMA   Veritabanı boşken verileri bu eski veritabanından taşır
  *   PORT             Dinlenecek port
@@ -91,8 +93,49 @@ function trDate(s) { if (!s) return '—'; const [y, m, d] = String(s).slice(0, 
 function dayDiff(a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5); }
 
 /* ---------------- e-posta ---------------- */
-async function sendMail({ to, subject, html, text, attachments }) {
-  if (!BIRD_KEY || !to) return { ok: false, reason: 'no_key' };
+const BREVO_KEY = process.env.BREVO_API_KEY || '';
+let brevoFrom = process.env.BREVO_SENDER || '';
+// Bird alan adı doğrulanmadan (paylaşılan deneme alan adı) yalnızca hesap sahibine gönderir: bunu bir kez görünce diğer alıcılar doğrudan Brevo'dan gider
+const birdOk = new Set(); let birdSandbox = false;
+/* gönderim sırası: Bird (alıcı kabul edilirse), olmazsa Brevo */
+async function sendMail(m) {
+  if (!m.to) return { ok: false, reason: 'no_to' };
+  const to = String(m.to).trim().toLowerCase();
+  if (BIRD_KEY && !(BREVO_KEY && birdSandbox && !birdOk.has(to))) {
+    const r = await sendBird(m);
+    if (r.ok) birdOk.add(to);
+    if (r.ok || !BREVO_KEY) return r;
+    if (r.status === 422) birdSandbox = true;
+  }
+  if (BREVO_KEY) return sendBrevo(m);
+  return { ok: false, reason: 'no_key' };
+}
+async function brevoSender() {
+  if (brevoFrom) return brevoFrom;
+  try {
+    const r = await fetch('https://api.brevo.com/v3/senders', { headers: { 'api-key': BREVO_KEY, accept: 'application/json' } });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { console.warn('Brevo gönderen listesi alınamadı', r.status, JSON.stringify(d).slice(0, 300)); return ''; }
+    const s = (d.senders || []).find(x => x.active) || (d.senders || [])[0];
+    if (s) brevoFrom = s.email; else console.warn('Brevo hesabında doğrulanmış gönderen yok');
+  } catch (e) { console.warn('Brevo bağlantı hatası', e.message); }
+  return brevoFrom;
+}
+async function sendBrevo({ to, subject, html, text, attachments }) {
+  const from = await brevoSender(); if (!from) return { ok: false, reason: 'no_sender' };
+  const okExt = /\.(xlsx|xls|csv|pdf|txt|zip|png|jpe?g|docx?)$/i;
+  try {
+    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST', headers: { 'api-key': BREVO_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ sender: { email: from, name: MAIL_FROM_NAME }, to: [{ email: to }], subject, htmlContent: html, ...(text ? { textContent: text } : {}),
+        ...(attachments && attachments.length ? { attachment: attachments.map(a => ({ name: okExt.test(a.filename) ? a.filename : a.filename + '.txt', content: a.content })) } : {}) }),
+    });
+    if (!r.ok) { const body = await r.text().catch(() => ''); console.warn('E-posta gönderilemedi (Brevo)', to, r.status, body.slice(0, 300)); return { ok: false, reason: 'rejected', status: r.status }; }
+    console.log('E-posta gönderildi (Brevo):', to, subject);
+    return { ok: true };
+  } catch (e) { console.warn('E-posta hatası (Brevo)', e.message); return { ok: false, reason: 'network' }; }
+}
+async function sendBird({ to, subject, html, text, attachments }) {
   const region = (BIRD_KEY.match(/^bk_([a-z]{2}\d+)_/) || [])[1] || 'us1';
   try {
     const r = await fetch(`https://${region}.platform.bird.com/v1/email/messages`, {
@@ -117,7 +160,7 @@ function mailLayout(title, bodyHtml, cta) {
     <p style="font-size:12px;color:#6b7b78;text-align:center;margin-top:14px">Bu e-posta ${esc(APP_NAME)} sistemi tarafından otomatik gönderildi.</p>
   </div></body></html>`;
 }
-const mailEnabled = () => !!BIRD_KEY;
+const mailEnabled = () => !!(BIRD_KEY || BREVO_KEY);
 
 /* ---------------- şema ---------------- */
 async function migrate() {
@@ -466,7 +509,7 @@ app.post('/api/login', express.json({ limit: '10kb' }), wrap(async (req, res) =>
   const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 OR lower(email) = $1 LIMIT 1', [id]);
   const u = rows[0];
   if (!u || !checkPass(req.body.password || '', u.pass)) return res.status(401).json({ error: 'Kullanıcı adı / e-posta veya şifre hatalı' });
-  if (u.status === 'pending') return res.status(403).json({ error: 'Hesabınız henüz onaylanmadı. Yönetici e-postayla gelen onay bağlantısından onaylayınca giriş yapabilirsiniz.', pending: true, email: u.email });
+  if (u.status === 'pending') return res.status(403).json({ error: 'Hesabınız henüz etkinleşmedi. E-posta adresinize gelen doğrulama bağlantısına tıklayın; gelen kutusunda yoksa istenmeyen (spam) klasörüne bakın.', pending: true, email: u.email });
   if (u.status !== 'active') return res.status(403).json({ error: 'Hesabınız devre dışı. Yöneticinize başvurun.' });
   tries.delete('login:' + req.ip);
   const token = crypto.randomBytes(32).toString('hex');
@@ -483,7 +526,7 @@ app.post('/api/logout', wrap(async (req, res) => {
 async function sendVerify(req, u, token) {
   const url = `${baseUrl(req)}/api/verify?token=${token}`;
   return sendMail({ to: u.email, subject: `${APP_NAME}: e-posta adresinizi doğrulayın`,
-    html: mailLayout(`Hoş geldiniz ${u.name}`, '<p>Hesabınızı etkinleştirmek için e-posta adresinizi doğrulayın. Bağlantı 48 saat geçerlidir.</p>', { url, label: 'E-postamı doğrula' }),
+    html: mailLayout(`Hoş geldiniz ${u.name}`, '<p>Kaydınızı tamamlamak için aşağıdaki düğmeye tıklayıp e-posta adresinizi doğrulayın. Doğruladıktan sonra e-posta adresiniz ve şifrenizle giriş yapabilirsiniz.</p><p style="font-size:13px;color:#6b7b78">Bağlantı 48 saat geçerlidir. Bu kaydı siz yapmadıysanız bu e-postayı yok sayın.</p>', { url, label: 'E-postamı doğrula' }),
     text: `Hesabınızı etkinleştirmek için bu bağlantıyı açın: ${url}` });
 }
 /* kayıt onayı e-postayla: yöneticiye "Kaydı incele ve onayla" bağlantısı gider (satıcının kendi adresine e-posta gidemese de çalışır) */
@@ -519,9 +562,11 @@ app.post('/api/register', express.json({ limit: '10kb' }), wrap(async (req, res)
   if (ex.rows[0]) return res.status(400).json({ error: ex.rows[0].status === 'pending' ? 'Bu e-posta ile kayıt var, doğrulama bekleniyor. Aşağıdan doğrulama e-postasını tekrar isteyebilirsiniz.' : 'Bu e-posta adresiyle zaten bir hesap var. Giriş yapın veya şifrenizi sıfırlayın.' });
   const id = newId(); const token = crypto.randomBytes(24).toString('hex'); const atok = crypto.randomBytes(24).toString('hex');
   await pool.query(`INSERT INTO users (id, username, name, pass, role, email, status, branch, phone, verify_token, verify_expires, approve_token, approve_expires) VALUES ($1,$2,$3,$4,'satici',$2,'pending',$5,$6,$7, now() + interval '48 hours', $8, now() + interval '7 days')`, [id, email, name, hashPass(password), branch, phone, token, atok]);
-  const [r, approvalSent] = await Promise.all([sendVerify(req, { name, email }, token), sendApproval(req, { name, email, phone, branch }, atok)]);
+  // doğrulama e-postası kişinin kendi adresine gider; gönderilemezse yedek olarak yöneticiye onay e-postası gider
+  const r = await sendVerify(req, { name, email }, token);
+  const approvalSent = r.ok ? false : await sendApproval(req, { name, email, phone, branch }, atok);
   broadcast({ type: 'user', user: { id, username: email, name, role: 'satici', email, branch, phone, status: 'pending' } });
-  pushStaff({ title: 'Yeni kayıt', body: `${name} (${branch}) kayıt oldu, onayınızı bekliyor`, url: `${baseUrl(req)}/#tanimlar` });
+  pushStaff({ title: 'Yeni kayıt', body: r.ok ? `${name} (${branch}) kayıt oldu, e-posta doğrulaması bekleniyor` : `${name} (${branch}) kayıt oldu, onayınızı bekliyor`, url: `${baseUrl(req)}/#tanimlar` });
   res.json({ ok: true, mailSent: r.ok, approvalSent });
 }));
 app.post('/api/resend-verification', express.json({ limit: '10kb' }), wrap(async (req, res) => {
