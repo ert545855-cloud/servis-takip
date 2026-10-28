@@ -28,6 +28,7 @@ Servis takibi, sevkiyat ve şubeler arası ürün talepleri için anlık çalı�
 | `MAIL_FROM` | Gönderen adres. Doğrulanmış alan adı yoksa `onboarding@messagebird.dev` yalnızca Bird çalışma alanı üyelerine ulaşır |
 | `VAPID_PUBLIC` / `VAPID_PRIVATE` / `VAPID_SUBJECT` | Telefon bildirimleri (`npx web-push generate-vapid-keys`) |
 | `SEED_JSON` | *(İsteğe bağlı)* Veritabanı boşken bir kez içe aktarılacak başlangıç verileri |
+| `API_SHIELD_KEY` | *(Önerilir)* API kalkanı anahtarı (32 baytlık base64). Verilmezse her derlemede yeni anahtar üretilir ve açık sekmeler güncellemeden sonra kendini yeniler |
 
 İlk açılışta tablolar otomatik kurulur ve yönetici hesabı oluşturulur.
 
@@ -39,6 +40,16 @@ DATABASE_URL=postgres://kullanici@localhost:5432/servis ADMIN_USERNAME=admin ADM
 ```
 
 Ardından tarayıcıda http://localhost:3000 adresini açın.
+
+## Derleme ve karartma
+
+`npm install` sonunda `build.js` otomatik çalışır ve `public/` klasöründen `dist/` üretir:
+
+- Uygulama betiği javascript-obfuscator ile karartılır, CSS küçültülür, dosyalar brotli/gzip ile önceden sıkıştırılır.
+- API kalkanı anahtarı betiğe gömülür; uygulamanın istek, yanıt ve canlı olay trafiği bu anahtarla kodlanır.
+- Sunucu `dist/` varsa onu sunar. Kaynak dosyalarla denemek için `SERVE_SOURCE=1 npm start`, derlemeyi atlamak için `SKIP_BUILD=1 npm install`.
+
+Kaynak kod `public/` altında okunur kalır; depoyu herkese açık tutmayın.
 
 ## Notlar
 

@@ -181,6 +181,7 @@ h1,h2,h3,h4{text-wrap:balance}
 .col-h .sum{font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums}
 .dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
 .col-b{padding:10px;display:flex;flex-direction:column;gap:9px;flex:1;overflow-y:auto;min-height:0}
+.col-more{display:block;width:100%;margin-top:4px;padding:9px;border:1.5px dashed var(--line);border-radius:9px;background:none;color:var(--accent);font-weight:700;font-size:.82rem;cursor:pointer}.col-more:hover{background:var(--accent-soft)}
 .col-empty{color:var(--faint);font-size:.82rem;text-align:center;padding:18px 6px;border:1.5px dashed var(--line);border-radius:9px}
 @media (max-width:860px){.board{grid-template-columns:repeat(8,minmax(82vw,1fr))}}
 
@@ -779,12 +780,29 @@ body.bulk-on .toast{bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 74px
 .stage-join .who{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
 .stage-join .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .stage-join .row .vbtn{flex:none;padding:0 18px;min-height:44px;font-size:.92rem}
-.tiles{flex:1;min-height:0;display:grid;gap:10px;padding:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));grid-auto-rows:minmax(160px,1fr);overflow-y:auto}
-.tile{position:relative;background:var(--d1);border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:160px;box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .12s}
+.tiles{position:relative;flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:10px;padding:12px;overflow:hidden}
+.tile{position:relative;background:var(--d1);border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex:none;width:300px;height:169px;box-shadow:inset 0 0 0 2px transparent;transition:box-shadow .12s}
 .tile.spk{box-shadow:inset 0 0 0 3px var(--dok)}
 .tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
 .tile video.contain{object-fit:contain}
-.tile.self video:not(.contain){transform:scaleX(-1)}
+.tile video.mirror{transform:scaleX(-1)}
+.tiles.duo .tile.big,.tiles.focus .tile.big{position:absolute;left:12px;top:12px;right:12px;bottom:12px;width:auto;height:auto}
+.tiles.focus{align-content:flex-end;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto}
+.tiles.focus .tile.big{bottom:calc(var(--strip,110px) + 22px)}
+.tile.pip{position:absolute;z-index:4;box-shadow:0 8px 24px rgba(0,0,0,.55),0 0 0 2px rgba(255,255,255,.18);cursor:grab;touch-action:none;transition:left .18s,top .18s,box-shadow .12s}
+.tile.pip.drag{transition:none;cursor:grabbing}
+.tile.pip .t-av{width:44px;height:44px;font-size:1rem}
+.tile.pip .t-name{font-size:.7rem;left:6px;bottom:6px;padding:2px 6px}
+.tile.pip .t-qw,.tile.pip .t-tools{display:none}
+.t-tools{position:absolute;right:8px;top:8px;display:flex;gap:6px;opacity:0;transition:opacity .15s;z-index:2}
+.tile:hover .t-tools,.tile:focus-within .t-tools,.tile.tools .t-tools{opacity:1}
+.t-tools button{width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.t-tools button svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
+.t-tools button:hover{background:rgba(0,0,0,.8)}
+.callmini{position:fixed;right:max(12px,env(safe-area-inset-right,0px));bottom:max(84px,calc(env(safe-area-inset-bottom,0px) + 80px));z-index:46;width:200px;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#000;box-shadow:0 12px 30px rgba(0,0,0,.45),0 0 0 2px rgba(255,255,255,.15);cursor:pointer}
+.callmini video{width:100%;height:100%;object-fit:cover;display:block}
+.callmini span{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:2px 7px;font-size:.72rem;font-weight:600}
+@media (max-width:760px){.callmini{width:108px;aspect-ratio:3/4}}
 .t-av{width:88px;height:88px;font-size:2rem;transition:box-shadow .12s}
 .t-name{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;padding:3px 8px;font-size:.82rem;font-weight:600;display:flex;gap:6px;align-items:center;max-width:calc(100% - 20px)}
 .t-name i{font-style:normal;color:var(--dr)}
@@ -824,7 +842,12 @@ body.bulk-on .toast{bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + 74px
   .msg .av{width:36px;height:36px}
   .m-tools{right:8px}
   .ch-comp{padding:0 8px max(8px,env(safe-area-inset-bottom,0px))}
-  .tiles{grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));grid-auto-rows:minmax(130px,1fr);padding:8px;gap:8px}
+  .tiles{padding:8px;gap:8px}
+  .tiles.duo .tile.big{left:8px;top:8px;right:8px;bottom:8px}
+  .tiles.focus .tile.big{left:8px;top:8px;right:8px}
+  .t-tools{opacity:1}
+  .stage-bar{gap:8px;padding-top:8px}
+  .stage-bar .vbtn{width:48px;height:48px}
   .t-av{width:64px;height:64px;font-size:1.5rem}
   .callpill{bottom:max(14px,calc(env(safe-area-inset-bottom,0px) + 10px))}
 }
@@ -1781,35 +1804,45 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const norm=s=>String(s||'').trim().toLocaleLowerCase('tr-TR').replace(/\s+/g,' ');
 const pad=n=>String(n).padStart(2,'0');
 const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
-const today=()=>ymd(new Date());
+let _tdV='',_tdAt=0;const today=()=>{const n=Date.now();if(n-_tdAt>20000){_tdV=ymd(new Date());_tdAt=n}return _tdV};
 const parse=s=>{const [y,m,d]=String(s).split('-').map(Number);return new Date(y,(m||1)-1,d||1)};
 const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return ymd(d)};
-const diff=(a,b)=>{const A=parse(a),B=parse(b);return Math.round((Date.UTC(B.getFullYear(),B.getMonth(),B.getDate())-Date.UTC(A.getFullYear(),A.getMonth(),A.getDate()))/864e5)};
-const fmt=s=>s?parse(s).toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'}):'—';
-const fmtS=s=>s?parse(s).toLocaleDateString('tr-TR',{day:'2-digit',month:'short'}):'—';
-const dayName=s=>parse(s).toLocaleDateString('tr-TR',{weekday:'long'});
-const monthName=s=>parse(s+'-01').toLocaleDateString('tr-TR',{month:'short',year:'2-digit'});
-const money=v=>(v===''||v==null||isNaN(v))?'':new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:2}).format(Number(v));
-const moneyK=v=>new Intl.NumberFormat('tr-TR',{notation:'compact',maximumFractionDigits:1}).format(v)+' ₺';
+const _dn=new Map();const dnum=s=>{let v=_dn.get(s);if(v===undefined){const [y,m,d]=String(s).split('-').map(Number);v=Math.round(Date.UTC(y||1970,(m||1)-1,d||1)/864e5);if(_dn.size>20000)_dn.clear();_dn.set(s,v)}return v};
+const wday=n=>(((n%7)+7)%7+4)%7;
+const diff=(a,b)=>dnum(b)-dnum(a);
+const memoF=(fn)=>{const m=new Map();return s=>{let v=m.get(s);if(v===undefined){v=fn(s);if(m.size>5000)m.clear();m.set(s,v)}return v}};
+const DF={l:new Intl.DateTimeFormat('tr-TR',{day:'2-digit',month:'short',year:'numeric'}),s:new Intl.DateTimeFormat('tr-TR',{day:'2-digit',month:'short'}),w:new Intl.DateTimeFormat('tr-TR',{weekday:'long'}),m:new Intl.DateTimeFormat('tr-TR',{month:'short',year:'2-digit'})};
+const _fmt=memoF(s=>DF.l.format(parse(s))),_fmtS=memoF(s=>DF.s.format(parse(s)));
+const fmt=s=>s?_fmt(s):'—';
+const fmtS=s=>s?_fmtS(s):'—';
+const dayName=memoF(s=>DF.w.format(parse(s)));
+const monthName=memoF(s=>DF.m.format(parse(s+'-01')));
+const NF={c:new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:2}),k:new Intl.NumberFormat('tr-TR',{notation:'compact',maximumFractionDigits:1})};
+const money=v=>(v===''||v==null||isNaN(v))?'':NF.c.format(Number(v));
+const moneyK=v=>NF.k.format(v)+' ₺';
 const stamp=()=>{const d=new Date();return ymd(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes())};
 const iso=()=>new Date().toISOString();
-const byName=(a,b)=>String(a.name||'').localeCompare(String(b.name||''),'tr');
+const COLL=new Intl.Collator('tr');const byName=(a,b)=>COLL.compare(String(a.name||''),String(b.name||''));
 const ICON={user:'<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',clip:'<svg viewBox="0 0 24 24"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/></svg>',chat:'<svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>',box:'<svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4zM3 7v10l9 4 9-4V7M12 11v10"/></svg>'};
 
 /* ================= working-day maths ================= */
-function rebuildHol(){S.hol=new Set((S.settings.holidays||[]).map(h=>h.date))}
+function rebuildHol(){S.hol=new Set((S.settings.holidays||[]).map(h=>h.date));S.holN=[...S.hol].map(dnum)}
 function isWork(d,biz){
   if(!biz)return true;
-  const w=parse(d).getDay();
+  const w=wday(dnum(d));
   if(w===0)return false;
   if(w===6&&!S.settings.saturdayWork)return false;
   return !S.hol.has(d);
 }
+function workIn(lo,hi){ /* (lo,hi] gün numaraları arasındaki iş günleri */
+  const n=hi-lo;if(n<=0)return 0;const sat=!!S.settings.saturdayWork;const wk=Math.floor(n/7);let c=wk*(sat?6:5);
+  for(let k=lo+wk*7+1;k<=hi;k++){const w=wday(k);if(w!==0&&(w!==6||sat))c++}
+  for(const h of (S.holN||[])){if(h>lo&&h<=hi){const w=wday(h);if(w!==0&&(w!==6||sat))c--}}
+  return c}
 function addWork(start,n,biz){if(!biz)return addDays(start,n);let d=start,c=0,g=0;while(c<n&&g<400){d=addDays(d,1);g++;if(isWork(d,true))c++}return d}
 function between(a,b,biz){ /* working days in (a,b]; negative if b<a */
-  if(!a||!b)return 0;const dd=diff(a,b);if(!biz)return dd;if(dd===0)return 0;
-  const lo=dd>0?a:b,hi=dd>0?b:a;let c=0,d=lo,g=0;while(d<hi&&g<800){d=addDays(d,1);g++;if(isWork(d,true))c++}
-  return dd>0?c:-c;
+  if(!a||!b)return 0;const A=dnum(a),B=dnum(b);const dd=B-A;if(!biz)return dd;if(dd===0)return 0;
+  return dd>0?workIn(A,B):-workIn(B,A);
 }
 function slaDaysFor(catId){const c=S.categories.find(x=>x.id===catId);const n=Number(c&&c.slaDays);return n>0?n:(Number(S.settings.slaDays)||7)}
 function computeDue(opened,catId){const biz=!!S.settings.businessDays;const days=slaDaysFor(catId);return {dueAt:addWork(opened,days,biz),slaDays:days,slaBusiness:biz}}
@@ -1877,7 +1910,7 @@ function ensureNames(){}
 function pill(st){return `<span class="pill"><span class="dot" style="background:var(--st-${esc(st)})"></span>${esc(STMAP[st]?.t||st)}</span>`}
 
 /* ================= filtering ================= */
-function matchQ(t,q){return norm([t.no,t.customerName,t.productName,t.firmName,t.desc,t.invoiceNo,t.serial,t.tech,t.customerPhone,t.trackNo,t.rTrackNo,t.svcNo,t.productCode,t.barcode].join(' ')).includes(q)}
+const _hay=new WeakMap();function matchQ(t,q){let h=_hay.get(t);if(h===undefined){h=norm([t.no,t.customerName,t.productName,t.firmName,t.desc,t.invoiceNo,t.serial,t.tech,t.customerPhone,t.trackNo,t.rTrackNo,t.svcNo,t.productCode,t.barcode].join(' '));_hay.set(t,h)}return h.includes(q)}
 function filtered(){
   const q=norm(S.q);
   return S.tickets.filter(t=>{
@@ -1970,7 +2003,7 @@ function cardHTML(t){
 }
 function boardToolbar(c){
   const q=(k,label,n,cls)=>`<button type="button" class="qchip ${cls||''}" data-quick="${k}" aria-pressed="${S.quick===k}">${label} <b>${n}</b></button>`;
-  return `<div class="toolbar">
+  return [`<div class="toolbar">
     <h1>Pano</h1>
     <div class="qchips">${q('', 'Açık kayıt',c.act)}${c.bana||S.quick==='bana'?q('bana','Bana atanan',c.bana):''}${q('late','Süresi geçen',c.late,c.late?'bad':'')}${q('soon','2 gün içinde',c.soon,c.soon?'warn':'')}${q('uzun','Serviste uzun kalan',c.uzun,c.uzun?'warn':'')}${q('haber','Müşteriye haber bekleyen',c.haber,c.haber?'warn':'')}${q('bekleyen','Mağazada bekleyen',c.bekleyen,c.bekleyen?'warn':'')}${q('onay','Onay bekleyen',c.onay,c.onay?'warn':'')}${q('acil','Acil',c.acil,c.acil?'bad':'')}</div>
     <span class="sp"></span>
@@ -1979,24 +2012,22 @@ function boardToolbar(c){
     ${S.canWrite?`<button class="btn ${S.bulk?'primary':''}" type="button" data-act="bulk" aria-pressed="${!!S.bulk}"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 5-5.5"/></svg>${S.bulk?'Seçimi bitir':'Toplu seç'}</button>`:''}
     <button class="btn" type="button" data-act="xlsx" ${S.downloads?'':'hidden'}><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel</button>
     <button class="btn primary" type="button" data-act="new" ${S.db&&S.canWrite?'':'disabled'}>+ Yeni arıza kaydı</button>
-  </div>
-  <div class="toolbar">
+  </div>`,`<div class="toolbar">
     <input class="inp search" id="q" type="search" placeholder="Kayıt no, müşteri, telefon, ürün, firma ara…" aria-label="Ara" value="${esc(S.q)}">
     <select class="inp" id="ff-cat" aria-label="Kategori">${optList(S.categories,S.fCat,'Tüm kategoriler')}</select>
     <select class="inp" id="ff-firm" aria-label="Firma">${optList(S.firms,S.fFirm,'Tüm firmalar')}</select>
     <select class="inp" id="ff-pri" aria-label="Öncelik"><option value="">Tüm öncelikler</option>${Object.entries(PRI).map(([k,v])=>`<option value="${k}" ${S.fPri===k?'selected':''}>${v}</option>`).join('')}</select>
     <select class="inp" id="ff-war" aria-label="Garanti"><option value="">Garanti: hepsi</option>${Object.entries(WAR).map(([k,v])=>`<option value="${k}" ${S.fWar===k?'selected':''}>${v}</option>`).join('')}</select>
     ${(S.q||S.fCat||S.fFirm||S.fPri||S.fWar||S.quick)?'<button class="btn ghost small" type="button" data-act="clear">Filtreleri temizle</button>':''}
-  </div>`;
+  </div>`];
 }
 let boardBuilt=false;
 function renderBoard(c){
   const v=$('view-pano');
-  if(!boardBuilt){v.innerHTML='<div id="tb"></div><div id="board-msg"></div><div class="board" id="board"></div>';boardBuilt=true}
-  const active=document.activeElement&&document.activeElement.id==='q';
-  const caret=active?document.activeElement.selectionStart:0;
-  $('tb').innerHTML=boardToolbar(c);
-  if(active){const q=$('q');q.focus();try{q.setSelectionRange(caret,caret)}catch(_){}}
+  if(!boardBuilt||!$('tb1')){v.innerHTML='<div id="tb"><div id="tb1"></div><div id="tb2"></div></div><div id="board-msg"></div><div class="board" id="board"></div>';boardBuilt=true;S._tb2=null}
+  const [t1,t2]=boardToolbar(c);$('tb1').innerHTML=t1;
+  {const k2=t2.replace(/value="[^"]*"/,'');const qEl=$('q');const active=qEl&&document.activeElement===qEl;
+   if(S._tb2!==k2||(qEl&&!active&&qEl.value!==S.q)){S._tb2=k2;const caret=active?qEl.selectionStart:0;$('tb2').innerHTML=t2;if(active){const q=$('q');q.focus();try{q.setSelectionRange(caret,caret)}catch(_){}}}}
   const list=filtered();
   let msg='';
   if(S.db&&!S.loaded.tickets)msg='<div class="banner">Kayıtlar yükleniyor…</div>';
@@ -2009,7 +2040,7 @@ function renderBoard(c){
     if(ACTIVE.includes(st.k))items.sort((a,b)=>(pr[a.priority||'normal']-pr[b.priority||'normal'])||String(a.dueAt).localeCompare(String(b.dueAt)));
     else items.sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
     const sum=items.reduce((a,t)=>a+(Number(t.invoiceAmount)||0),0);
-    html+=`<section class="col" data-status="${st.k}"><div class="col-h"><div class="row"><span class="dot" style="background:var(--st-${st.k})"></span><h3>${st.t}</h3><span class="n">${items.length}</span></div><p>${st.d}</p>${S.bulk&&items.length?`<button type="button" class="colsel" data-colsel="${st.k}">${items.every(t=>S.bulk.has(t.id))?'Seçimi kaldır':'Hepsini seç'}</button>`:''}${sum&&(st.k==='faturalandi'||st.k==='fatura_talep')?`<span class="sum">Toplam ${esc(money(sum))}</span>`:''}</div><div class="col-b">${items.length?items.map(cardHTML).join(''):`<div class="col-empty">${S.canWrite?'Kartı buraya sürükleyin':'Kayıt yok'}</div>`}</div></section>`;
+    html+=`<section class="col" data-status="${st.k}"><div class="col-h"><div class="row"><span class="dot" style="background:var(--st-${st.k})"></span><h3>${st.t}</h3><span class="n">${items.length}</span></div><p>${st.d}</p>${S.bulk&&items.length?`<button type="button" class="colsel" data-colsel="${st.k}">${items.every(t=>S.bulk.has(t.id))?'Seçimi kaldır':'Hepsini seç'}</button>`:''}${sum&&(st.k==='faturalandi'||st.k==='fatura_talep')?`<span class="sum">Toplam ${esc(money(sum))}</span>`:''}</div><div class="col-b">${items.length?(()=>{const lim=(S.colLim||(S.colLim={}))[st.k]||40;return items.slice(0,lim).map(cardHTML).join('')+(items.length>lim?`<button type="button" class="col-more" data-colmore="${st.k}">${items.length-lim} kayıt daha göster</button>`:'')})():`<div class="col-empty">${S.canWrite?'Kartı buraya sürükleyin':'Kayıt yok'}</div>`}</div></section>`;
   }
   $('board').innerHTML=html;
 }
@@ -2031,9 +2062,10 @@ function renderCal(){
     <div class="toolbar"><input class="inp search" id="q" type="search" placeholder="Ara…" aria-label="Ara" value="${esc(S.q)}"><select class="inp" id="ff-cat" aria-label="Kategori">${optList(S.categories,S.fCat,'Tüm kategoriler')}</select><select class="inp" id="ff-firm" aria-label="Firma">${optList(S.firms,S.fFirm,'Tüm firmalar')}</select></div>
     ${strip}<div class="groups">`;
   let any=false;
-  if(g.late.length){any=true;html+=`<section class="group bad" id="g-late"><div class="group-h"><h3>Süresi geçenler</h3><span>${g.late.length} kayıt · fatura süresi doldu</span></div>${table(g.late)}</section>`}
-  for(const d of days){if(!g[d].length)continue;any=true;html+=`<section class="group" id="g-${d}"><div class="group-h"><h3>${d===t0?'Bugün son gün':esc(fmt(d))}</h3><span>${esc(dayName(d))} · ${g[d].length} kayıt</span></div>${table(g[d])}</section>`}
-  if(g.later.length){any=true;html+=`<section class="group"><div class="group-h"><h3>Daha sonra</h3><span>${g.later.length} kayıt</span></div>${table(g.later)}</section>`}
+  const calCut=(k,arr)=>{const n=(S.calLimK||{})[k]||150;const a=srt(arr);return table(a.slice(0,n))+(a.length>n?`<button type="button" class="col-more" data-calmore="${k}">${a.length-n} kayıt daha göster</button>`:'')};
+  if(g.late.length){any=true;html+=`<section class="group bad" id="g-late"><div class="group-h"><h3>Süresi geçenler</h3><span>${g.late.length} kayıt · fatura süresi doldu</span></div>${calCut('late',g.late)}</section>`}
+  for(const d of days){if(!g[d].length)continue;any=true;html+=`<section class="group" id="g-${d}"><div class="group-h"><h3>${d===t0?'Bugün son gün':esc(fmt(d))}</h3><span>${esc(dayName(d))} · ${g[d].length} kayıt</span></div>${calCut(d,g[d])}</section>`}
+  if(g.later.length){any=true;html+=`<section class="group"><div class="group-h"><h3>Daha sonra</h3><span>${g.later.length} kayıt</span></div>${calCut('later',g.later)}</section>`}
   if(!any)html+=`<div class="empty-hero"><div><h2>Fatura bekleyen kayıt yok</h2><p>Açık, İşlemde, Parça Bekliyor ve Fatura Talebi durumundaki kayıtlar burada son tarihlerine göre listelenir.</p></div></div>`;
   html+='</div></div>';
   keepSearch(()=>{$('view-takvim').innerHTML=html});
@@ -2043,12 +2075,14 @@ function keepSearch(fn){const a=document.activeElement;const isQ=a&&a.id==='q';c
 /* ================= customers ================= */
 function renderCust(){
   const q=norm(S.custQ);
-  const rows=[...S.customers].sort(byName).map(c=>{const ts=S.tickets.filter(t=>t.customerId===c.id);return {...c,ts,act:ts.filter(t=>ACTIVE.includes(t.status)).length}}).filter(c=>!q||norm(c.name+' '+(c.phone||'')).includes(q));
+  const byC=new Map();for(const t of S.tickets){const k=t.customerId;if(!k)continue;let a=byC.get(k);if(!a)byC.set(k,a=[]);a.push(t)}
+  const allRows=[...S.customers].filter(c=>!q||norm(c.name+' '+(c.phone||'')).includes(q)).sort(byName).map(c=>{const ts=byC.get(c.id)||[];return {...c,ts,act:ts.filter(t=>ACTIVE.includes(t.status)).length}});
+  const lim=S.custLim||150;const rows=allRows.slice(0,lim);
   if(!S.custSel&&rows.length)S.custSel=rows[0].id;
   const sel=S.customers.find(c=>c.id===S.custSel);
   let detail='';
   if(sel){
-    const ts=S.tickets.filter(t=>t.customerId===sel.id).sort((a,b)=>String(b.openedAt).localeCompare(String(a.openedAt)));
+    const ts=(byC.get(sel.id)||[]).slice().sort((a,b)=>String(b.openedAt).localeCompare(String(a.openedAt)));
     const act=ts.filter(t=>ACTIVE.includes(t.status));const late=act.filter(t=>sla(t).left<0).length;
     const sum=ts.reduce((a,t)=>a+(Number(t.invoiceAmount)||0),0);
     const prodCount={};ts.forEach(t=>{const k=norm(t.productName);prodCount[k]=(prodCount[k]||0)+1});
@@ -2070,7 +2104,7 @@ function renderCust(){
     <div class="cust">
       <section class="panel"><div class="panel-h"><h3>Liste</h3><span>${S.customers.length}</span></div>
         <div style="padding:10px 12px;border-bottom:1px solid var(--line-2)"><input class="inp" id="cust-q" type="search" placeholder="Ad veya telefon ara" style="width:100%" value="${esc(S.custQ)}"></div>
-        ${rows.length?`<ul class="list cust-list">${rows.map(c=>`<li data-cust="${esc(c.id)}" aria-selected="${c.id===S.custSel}" tabindex="0"><div style="min-width:0"><div class="nm">${esc(c.name)}</div>${c.phone?`<div class="sub">${esc(c.phone)}</div>`:''}</div><span class="used">${c.ts.length} kayıt${c.act?' · '+c.act+' açık':''}</span></li>`).join('')}</ul>`:'<div class="none">Müşteri bulunamadı.</div>'}
+        ${rows.length?`<ul class="list cust-list">${rows.map(c=>`<li data-cust="${esc(c.id)}" aria-selected="${c.id===S.custSel}" tabindex="0"><div style="min-width:0"><div class="nm">${esc(c.name)}</div>${c.phone?`<div class="sub">${esc(c.phone)}</div>`:''}</div><span class="used">${c.ts.length} kayıt${c.act?' · '+c.act+' açık':''}</span></li>`).join('')}</ul>${allRows.length>lim?`<button type="button" class="col-more" data-custmore style="margin:8px 12px;width:calc(100% - 24px)">${allRows.length-lim} müşteri daha göster</button>`:''}`:'<div class="none">Müşteri bulunamadı.</div>'}
       </section>
       ${detail}
     </div></div>`;
@@ -2592,8 +2626,8 @@ document.addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Enter'){const c=e.target.closest&&e.target.closest('.card,[data-cust]');if(c&&e.target===c)c.click()}});
 document.addEventListener('input',e=>{
   const id=e.target.id;
-  if(id==='q'){S.q=e.target.value;schedule()}
-  else if(id==='cust-q'){S.custQ=e.target.value;schedule()}
+  if(id==='q'){S.q=e.target.value;S.colLim={};clearTimeout(S._qT);S._qT=setTimeout(schedule,S.tickets.length>300?220:60)}
+  else if(id==='cust-q'){S.custQ=e.target.value;S.custLim=0;clearTimeout(S._qT);S._qT=setTimeout(schedule,120)}
 });
 document.addEventListener('change',async e=>{
   const id=e.target.id;
@@ -2671,12 +2705,31 @@ $('btn-full').onclick=async()=>{try{if(document.fullscreenElement)await document
 /* ================= server connection ================= */
 S.users=[];S.meUser=null;S.downloads=true;S.sample=null;
 function genId(){const a='abcdefghijklmnopqrstuvwxyz0123456789';const r=crypto.getRandomValues(new Uint8Array(20));return [...r].map(x=>a[x%36]).join('')}
+/* ---------- API kalkanı: istek ve yanıtlar kodlanır (derlemede anahtar yerleştirilir) ---------- */
+const SHK='__US_SHIELD_KEY__',SHKID='__US_SHIELD_KID__';
+const SHD=(()=>{if(SHK.indexOf('__')===0)return null;try{const k=Uint8Array.from(atob(SHK),c=>c.charCodeAt(0));let h=0x811c9dc5;for(const x of k){h^=x;h=Math.imul(h,0x01000193)>>>0}return {k,k32:h>>>0,v:typeof DecompressionStream!=='undefined'&&typeof CompressionStream!=='undefined'?'2':'1'}}catch(_){return null}})();
+const TE=new TextEncoder(),TD=new TextDecoder();
+function shX(b,salt){let x=((SHD.k32^((salt[0]|(salt[1]<<8)|(salt[2]<<16)|(salt[3]<<24))>>>0))>>>0)||0x9e3779b9;const K=SHD.k,kl=K.length,n=b.length;
+  for(let i=0;i<n;i+=4){x^=x<<13;x>>>=0;x^=x>>>17;x^=x<<5;x>>>=0;b[i]^=(x&255)^K[i%kl];if(i+1<n)b[i+1]^=((x>>>8)&255)^K[(i+1)%kl];if(i+2<n)b[i+2]^=((x>>>16)&255)^K[(i+2)%kl];if(i+3<n)b[i+3]^=((x>>>24)&255)^K[(i+3)%kl]}return b}
+const zpipe=(b,T)=>new Response(new Blob([b]).stream().pipeThrough(T)).arrayBuffer().then(x=>new Uint8Array(x));
+async function shEnc(obj){let b=TE.encode(JSON.stringify(obj));let fl=0;if(SHD.v==='2'&&b.length>4096){b=await zpipe(b,new CompressionStream('deflate-raw'));fl=1}const salt=crypto.getRandomValues(new Uint8Array(4));shX(b,salt);const out=new Uint8Array(b.length+6);out[0]=0x55;out[1]=fl;out.set(salt,2);out.set(b,6);return out}
+async function shDec(buf){const b=new Uint8Array(buf);if(b[0]!==0x55)throw new Error('kalkan');const body=b.slice(6);shX(body,b.subarray(2,6));const out=b[1]&1?await zpipe(body,new DecompressionStream('deflate-raw')):body;return JSON.parse(TD.decode(out))}
+function shDecSSE(s){const bin=atob(s);const b=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)b[i]=bin.charCodeAt(i);const body=b.slice(6);shX(body,b.subarray(2,6));return JSON.parse(TD.decode(body))}
+async function xreq(method,url,body,raw){const h={};let b;
+  if(raw){Object.assign(h,raw.headers||{});b=raw.body}
+  else if(body!==undefined){if(SHD){h['Content-Type']='application/x-us';b=await shEnc(body)}else{h['Content-Type']='application/json';b=JSON.stringify(body)}}
+  if(SHD)h['X-Us']=SHD.v+'.'+SHKID;
+  const res=await fetch(url,{method,credentials:'same-origin',headers:h,body:b});
+  let data=null;try{const ct=res.headers.get('content-type')||'';data=ct.indexOf('application/x-us')===0?await shDec(await res.arrayBuffer()):await res.json()}catch(_){}
+  if(res.status===409&&data&&data.reload&&!xreq.rl){xreq.rl=1;try{toast('Uygulama güncellendi, yenileniyor…')}catch(_){}setTimeout(()=>location.reload(),700)}
+  return {status:res.status,ok:res.ok,data,json:async()=>data||{}}}
+const xpost=(url,obj)=>xreq('POST',url,obj===undefined?{}:obj);
 async function call(method,url,body,raw){
   let res;
-  try{res=await fetch(url,{method,credentials:'same-origin',headers:raw?raw.headers:(body!==undefined?{'Content-Type':'application/json'}:{}),body:raw?raw.body:(body!==undefined?JSON.stringify(body):undefined)})}
+  try{res=await xreq(method,url,body,raw)}
   catch(_){throw {code:'unavailable'}}
   if(res.status===401){showLogin(S.me?'Oturumunuz sona erdi, lütfen tekrar giriş yapın.':'');throw {code:'auth',serverMsg:'Giriş yapmanız gerekiyor.'}}
-  let data=null;try{data=await res.json()}catch(_){}
+  const data=res.data;
   if(!res.ok){const m={403:'invalid_argument',404:'invalid_argument',400:'invalid_argument',413:'too_large',415:'unsupported_type',429:'rate_limited'};throw {code:m[res.status]||'unavailable',serverMsg:data&&data.error}}
   return data;
 }
@@ -2702,9 +2755,9 @@ function setLive(state){const el=$('live');if(!el)return;el.dataset.state=state;
 let es=null,hadError=false;
 function connectEvents(){
   if(es)es.close();setLive('wait');
-  es=new EventSource('/api/events');
+  es=new EventSource('/api/events'+(SHD?'?x='+SHKID:''));
   es.onopen=()=>{setLive('on');if(hadError){hadError=false;loadAll(true)}};
-  es.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
+  es.onmessage=e=>{let m;try{const d=e.data;m=d.charCodeAt(0)===126?shDecSSE(d.slice(1)):JSON.parse(d)}catch(_){return}
     if(onExtEvent(m)){if(m.type==='hello')setLive('on');return}
     if(m.type==='doc')applyChange(m.coll,m.id,m.doc);
     else if(m.type==='user'){const i=S.users.findIndex(x=>x.id===m.user.id);if(i>=0)S.users[i]=m.user;else S.users.push(m.user);{const ci=C.users.findIndex(x=>x.id===m.user.id);if(ci>=0)C.users[ci]={...C.users[ci],...m.user};else if(m.user.status==='active'&&C.loaded)C.users.push(m.user);S.names['av:'+m.user.id]=m.user.avatar?'/api/files/'+m.user.avatar:'';C.headKey='';C.dirty=true}if(m.user.id===S.me){S.meUser=m.user;applyRole()}schedule()}
@@ -2712,7 +2765,7 @@ function connectEvents(){
     else if(m.type==='hello')setLive('on');
     else if(m.type==='reload')loadAll(true);
   };
-  es.onerror=()=>{hadError=true;setLive('off');fetch('/api/bootstrap',{credentials:'same-origin'}).then(r=>{if(r.status===401){es.close();showLogin('Oturumunuz sona erdi, lütfen tekrar giriş yapın.')}}).catch(()=>{})};
+  es.onerror=()=>{hadError=true;setLive('off');clearTimeout(es._chk);es._chk=setTimeout(()=>xreq('GET','/api/session').then(r=>{if(r.status===401){es.close();showLogin('Oturumunuz sona erdi, lütfen tekrar giriş yapın.')}}).catch(()=>{}),1500)};
 }
 function applyRole(){
   const r=S.meUser&&S.meUser.role;S.canWrite=r!=='viewer';S.isAdmin=r==='admin';S.isSeller=r==='satici';
@@ -2744,23 +2797,23 @@ function lmode(m,msg,ok){document.querySelectorAll('.lmode').forEach(f=>f.hidden
   setTimeout(()=>{const f=document.querySelector('.lmode:not([hidden]) input');if(f)f.focus()},30)}
 function showLogin(msg,ok){if(es){es.close();es=null}if(typeof leaveCall==='function'&&CALL.room)leaveCall(true);$('login').hidden=false;$('app').hidden=true;closeDrawer();if(typeof closeReq==='function')closeReq();lmode('login',msg,ok)}
 let branchInfo=null;
-async function loadBranchList(){try{if(!branchInfo){const r=await fetch('/api/public/info');branchInfo=await r.json()}
+async function loadBranchList(){try{if(!branchInfo){const r=await xreq('GET','/api/public/info');branchInfo=r.data||{}}
   $('dl-branches').innerHTML=(branchInfo.branches||[]).map(b=>`<option value="${esc(b)}"></option>`).join('')}catch(_){}}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-lmode]');if(b&&b.closest('#login'))lmode(b.dataset.lmode)});
 function pendingNote(email,msg){const n=$('l-msg');n.className='lnote';n.innerHTML='';const p=document.createElement('div');p.textContent=msg;n.appendChild(p);
   const b=document.createElement('button');b.type='button';b.className='btn small';b.textContent='Doğrulama e-postasını tekrar gönder';
-  b.onclick=async()=>{b.disabled=true;try{const r=await fetch('/api/resend-verification',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const d=await r.json().catch(()=>({}));
+  b.onclick=async()=>{b.disabled=true;try{const r=await xpost('/api/resend-verification',{email});const d=await r.json().catch(()=>({}));
     p.textContent=r.ok?(d.mailSent?'Doğrulama e-postası tekrar gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin.':'E-posta şu an gönderilemedi. Yöneticiniz hesabınızı elle onaylayabilir.'):(d.error||'Gönderilemedi');n.className='lnote'+(r.ok&&d.mailSent?' ok':'')}catch(_){p.textContent='Sunucuya ulaşılamadı'}finally{b.disabled=false}};
   n.appendChild(b)}
 $('lform').addEventListener('submit',async e=>{e.preventDefault();const b=$('l-btn');b.disabled=true;$('l-msg').textContent='';
-  try{const r=await fetch('/api/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('l-user').value,password:$('l-pass').value})});
+  try{const r=await xpost('/api/login',{username:$('l-user').value,password:$('l-pass').value});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){if(d.pending)pendingNote(d.email,d.error);else{$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Giriş yapılamadı'}return}
     $('l-pass').value='';await loadAll();
   }catch(_){$('l-msg').className='lnote';$('l-msg').textContent='Sunucuya ulaşılamadı. Sunucu uykudaysa açılması bir dakika sürebilir, tekrar deneyin.'}finally{b.disabled=false}});
 $('regform').addEventListener('submit',async e=>{e.preventDefault();const b=$('g-btn');b.disabled=true;$('l-msg').textContent='';
   const email=$('g-email').value.trim();
-  try{const r=await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('g-name').value,email,phone:$('g-phone').value,branch:$('g-branch').value,password:$('g-pass').value})});
+  try{const r=await xpost('/api/register',{name:$('g-name').value,email,phone:$('g-phone').value,branch:$('g-branch').value,password:$('g-pass').value});
     const d=await r.json().catch(()=>({}));
     if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Kayıt yapılamadı';return}
     $('regform').reset();lmode('login');$('l-user').value=email;
@@ -2768,15 +2821,15 @@ $('regform').addEventListener('submit',async e=>{e.preventDefault();const b=$('g
     else pendingNote(email,'Kaydınız alındı ancak doğrulama e-postası şu an gönderilemedi. Yöneticiniz hesabınızı onaylayınca giriş yapabilirsiniz.');
   }catch(_){$('l-msg').className='lnote';$('l-msg').textContent='Sunucuya ulaşılamadı, tekrar deneyin.'}finally{b.disabled=false}});
 $('fgform').addEventListener('submit',async e=>{e.preventDefault();
-  try{const r=await fetch('/api/forgot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('f-email').value})});const d=await r.json().catch(()=>({}));
+  try{const r=await xpost('/api/forgot',{email:$('f-email').value});const d=await r.json().catch(()=>({}));
     if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Gönderilemedi';return}
     lmode('login','Bu e-posta ile bir hesap varsa şifre sıfırlama bağlantısı gönderildi. Gelen kutunuzu kontrol edin.',true)}catch(_){$('l-msg').textContent='Sunucuya ulaşılamadı'}});
 let resetToken=null;
 $('rsform').addEventListener('submit',async e=>{e.preventDefault();
-  try{const r=await fetch('/api/reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:resetToken,password:$('x-pass').value})});const d=await r.json().catch(()=>({}));
+  try{const r=await xpost('/api/reset',{token:resetToken,password:$('x-pass').value});const d=await r.json().catch(()=>({}));
     if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Şifre kaydedilemedi';return}
     lmode('login','Yeni şifreniz kaydedildi, giriş yapabilirsiniz.',true)}catch(_){$('l-msg').textContent='Sunucuya ulaşılamadı'}});
-$('btn-logout').onclick=async()=>{try{await fetch('/api/logout',{method:'POST',credentials:'same-origin'})}catch(_){}showLogin('Çıkış yapıldı.')};
+$('btn-logout').onclick=async()=>{try{await xpost('/api/logout')}catch(_){}showLogin('Çıkış yapıldı.')};
 $('btn-pw').onclick=()=>{const u=S.meUser||{};$('pw-modal').hidden=false;$('pw-msg').textContent='';$('pw-cur').value='';$('pw-new').value='';
   $('pf-name').value=u.name||'';$('pf-phone').value=u.phone||'';$('pf-branch').value=u.branch||'';$('pf-email').value=u.email||'';$('pf-email').disabled=S.isSeller;
   refreshPush();installHint();$('pf-name').focus()};
@@ -3554,6 +3607,9 @@ document.addEventListener('change',async e=>{if(e.target.id!=='bk-st'||!S.bulk)r
   const withPhone=selTickets().filter(t=>t.status===st&&telE164(t.customerPhone));
   if(DEF_TPL[st]&&withPhone.length)openMQ(withPhone,st)});
 document.addEventListener('click',async e=>{
+  {const cmb=e.target.closest('[data-calmore]');if(cmb){const k=cmb.dataset.calmore;S.calLimK=S.calLimK||{};S.calLimK[k]=(S.calLimK[k]||150)+300;schedule();return}}
+  if(e.target.closest('[data-custmore]')){S.custLim=(S.custLim||150)+300;schedule();return}
+  const cm=e.target.closest('[data-colmore]');if(cm){S.colLim=S.colLim||{};S.colLim[cm.dataset.colmore]=(S.colLim[cm.dataset.colmore]||40)+100;schedule();return}
   const cs=e.target.closest('[data-colsel]');if(cs&&S.bulk){e.stopPropagation();const items=filtered().filter(t=>(t.status||'teslim_alindi')===cs.dataset.colsel);const all=items.every(t=>S.bulk.has(t.id));items.forEach(t=>all?S.bulk.delete(t.id):S.bulk.add(t.id));schedule();return}
   const a=e.target.closest('[data-act]');if(!a)return;const act=a.dataset.act;
   if(act==='bulk'){S.bulk=S.bulk?null:new Set();$('bulkbar').dataset.built='';schedule();if(S.bulk)toast('Seçmek istediğiniz kartlara dokunun');return}
@@ -3672,6 +3728,9 @@ function gradeHTML(p){if(!p.svcN)return '—';const pct=p.in20/p.svcN,avg=p.svcD
 /* ================= SOHBET ================= */
 const C={loaded:false,channels:[],users:[],online:new Set(),voice:{},dms:[],unread:{},last:{},reads:{},cur:null,msgs:{},more:{},loading:{},typing:{},reply:null,files:[],drafts:{},divider:{},built:false,headKey:'',mobileMain:false,showMembers:true,search:null,pend:null};
 const SVG={
+  flip:'<svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><path d="M9 13.5a3 3 0 0 1 5.2-2M15 12.5a3 3 0 0 1-5.2 2"/><path d="M14.5 9.5v2h-2M9.5 15.5v-2h2"/></svg>',
+  expand:'<svg viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></svg>',
+  pip:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg>',
   hash:'<span class="hash">#</span>',
   spk:'<svg viewBox="0 0 24 24"><path d="M4 10v4a1 1 0 0 0 1 1h3l5 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
   mic:'<svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
@@ -3766,9 +3825,9 @@ function renderSide(){
       <div class="cs-sec"><span>Özel mesajlar</span><button type="button" class="cs-ib" data-dmnew title="Yeni özel mesaj" aria-label="Yeni özel mesaj">+</button></div>
       ${dms.length?dms.map(dmIt).join(''):'<p style="color:var(--df);font-size:.8rem;margin:2px 8px">Birine mesaj atmak için + düğmesine basın veya sağdaki listeden kişiye tıklayın.</p>'}
     </div>
-    ${CALL.room?`<div class="cs-voice"><div class="st">● Sesli bağlı<small>${esc(chName(CALL.room))}</small></div><div class="row">${voiceBtns()}</div></div>`:''}
+    ${CALL.room?`<div class="cs-voice"><div class="st">● ${callVid()?'Görüntülü':'Sesli'} bağlı<small>${esc(chName(CALL.room))}</small></div><div class="row">${voiceBtns()}</div></div>`:''}
     <div class="cs-me"><span class="avw">${avatar(S.me,me.name)}<i class="pdot on"></i></span><div style="min-width:0;flex:1"><b>${esc(me.name||'')}</b><small>Çevrimiçi</small></div></div>`}
-function voiceBtns(stage){return `<button type="button" class="vbtn ${CALL.muted?'off':''}" data-vact="mic" title="${CALL.muted?'Mikrofonu aç':'Mikrofonu kapat'}" aria-pressed="${CALL.muted}">${CALL.muted?SVG.micoff:SVG.mic}</button><button type="button" class="vbtn ${CALL.deaf?'off':''}" data-vact="deaf" title="${CALL.deaf?'Sesi aç':'Sağırlaştır (kimseyi duyma)'}" aria-pressed="${CALL.deaf}">${CALL.deaf?SVG.deafoff:SVG.deaf}</button><button type="button" class="vbtn ${CALL.cam?'on':''}" data-vact="cam" title="Kamera" aria-pressed="${!!CALL.cam}">${CALL.cam?SVG.cam:SVG.camoff}</button>${navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia?`<button type="button" class="vbtn ${CALL.screen?'on':''}" data-vact="scr" title="Ekran paylaş" aria-pressed="${!!CALL.screen}">${SVG.scr}</button>`:''}<button type="button" class="vbtn" data-vact="set" title="Ses ayarları">${SVG.gear}</button><button type="button" class="vbtn end" data-vact="leave" title="Ayrıl">${SVG.end}${stage?' Ayrıl':''}</button>`}
+function voiceBtns(stage){return `<button type="button" class="vbtn ${CALL.muted?'off':''}" data-vact="mic" title="${CALL.muted?'Mikrofonu aç':'Mikrofonu kapat'}" aria-pressed="${CALL.muted}">${CALL.muted?SVG.micoff:SVG.mic}</button><button type="button" class="vbtn ${CALL.deaf?'off':''}" data-vact="deaf" title="${CALL.deaf?'Sesi aç':'Sağırlaştır (kimseyi duyma)'}" aria-pressed="${CALL.deaf}">${CALL.deaf?SVG.deafoff:SVG.deaf}</button><button type="button" class="vbtn ${CALL.cam?'on':''}" data-vact="cam" title="${CALL.cam?'Kamerayı kapat':'Kamerayı aç'}" aria-pressed="${!!CALL.cam}">${CALL.cam?SVG.cam:SVG.camoff}</button>${CALL.cam&&canFlip()?`<button type="button" class="vbtn" data-vact="flip" title="Ön / arka kamera" aria-label="Kamerayı çevir">${SVG.flip}</button>`:''}${navigator.mediaDevices&&navigator.mediaDevices.getDisplayMedia&&!isPhone()?`<button type="button" class="vbtn ${CALL.screen?'on':''}" data-vact="scr" title="Ekran paylaş" aria-pressed="${!!CALL.screen}">${SVG.scr}</button>`:''}<button type="button" class="vbtn" data-vact="set" title="Ses ayarları">${SVG.gear}</button><button type="button" class="vbtn end" data-vact="leave" title="Ayrıl">${SVG.end}${stage?' Ayrıl':''}</button>`}
 function renderHead(){
   const ch=C.cur;let key=((C.prefs||{})[ch]||'')+'|'+ch+'|'+(ch&&ch.startsWith('dm_')?isOnline(dmOther(ch)):'')+'|'+(CALL.room||'')+'|'+C.showMembers+'|'+(C.voice[ch]||[]).length;
   if(key===C.headKey)return;C.headKey=key;
@@ -4003,9 +4062,10 @@ function openChanForm(kind){const br=[...new Set([...S.branches.map(b=>b.name),.
 
 /* ================= SESLİ / GÖRÜNTÜLÜ ARAMA ================= */
 const CALL={room:null,peers:new Map(),mic:null,cam:null,screen:null,muted:false,deaf:false,ice:null,pend:{},speaking:new Set(),actx:null,levels:new Map(),outgoing:null,inviteWith:null,lvT:null,stT:null,tiles:new Map(),pttDown:false};
-const VS=(()=>{let v={};try{v=JSON.parse(localStorage.getItem('voice-set')||'{}')}catch(_){}return Object.assign({micId:'',spkId:'',ec:true,ns:true,agc:true,ptt:false,vol:{},mute:{}},v)})();
+const VS=(()=>{let v={};try{v=JSON.parse(localStorage.getItem('voice-set')||'{}')}catch(_){}return Object.assign({micId:'',spkId:'',camId:'',ec:true,ns:true,agc:true,ptt:false,vol:{},mute:{}},v)})();
 function saveVS(){try{localStorage.setItem('voice-set',JSON.stringify(VS))}catch(_){}}
 function curVideo(){return CALL.screen||CALL.cam||null}
+function callVid(){return !!(CALL.cam||CALL.screen||participants().some(p=>p.cid!==S.cid&&(p.video||p.screen)))}
 async function sig(to,data){try{await call('POST','/api/call/signal',{room:CALL.room,from:S.cid,to,data})}catch(_){}}
 function micConstraints(){const a={echoCancellation:VS.ec,noiseSuppression:VS.ns,autoGainControl:VS.agc,channelCount:1};if(VS.micId)a.deviceId={exact:VS.micId};return {audio:a,video:false}}
 async function getMic(){try{const s=await navigator.mediaDevices.getUserMedia(micConstraints());return s.getAudioTracks()[0]}catch(e){if(VS.micId&&e&&(e.name==='OverconstrainedError'||e.name==='NotFoundError')){VS.micId='';saveVS();return getMic()}throw e}}
@@ -4040,7 +4100,7 @@ function makePeer(cid,initiator){
       peer.audio.srcObject=new MediaStream([tr]);applyOut(peer);peer.audio.play().catch(()=>{CALL.blocked=true;if(isVoiceCh(C.cur))renderStage();renderCallUI()})}
     tr.onunmute=renderTiles;tr.onmute=renderTiles;renderTiles()};
   pc.onconnectionstatechange=()=>{const st=pc.connectionState;
-    if(st==='connected'){clearTimeout(peer.rt);peer.retries=0;if(peer.ta)tuneSender(peer.ta.sender)}
+    if(st==='connected'){clearTimeout(peer.rt);peer.retries=0;if(peer.ta)tuneSender(peer.ta.sender);tuneVideo(peer)}
     else if(st==='failed')restartPeer(peer);
     else if(st==='disconnected'){clearTimeout(peer.rt);peer.rt=setTimeout(()=>{if(pc.connectionState==='disconnected')restartPeer(peer)},4000)}
     renderTiles()};
@@ -4071,18 +4131,44 @@ function dropPeer(cid){const p=CALL.peers.get(cid);if(!p)return;clearTimeout(p.r
 function stopLocal(){for(const t of [CALL.mic,CALL.cam,CALL.screen])if(t)t.stop();CALL.mic=CALL.cam=CALL.screen=null;CALL.levels.delete('me')}
 async function leaveCall(silent){const room=CALL.room;if(!room)return;
   if(CALL.outgoing&&CALL.outgoing.room===room){call('POST','/api/call/ring/end',{room,reason:'cancelled'}).catch(()=>{});clearTimeout(CALL.outgoing.t);CALL.outgoing=null}
-  for(const cid of [...CALL.peers.keys()])dropPeer(cid);stopLocal();CALL.room=null;CALL.inviteWith=null;CALL.speaking.clear();CALL.tiles.forEach(t=>t.remove());CALL.tiles.clear();clearInterval(CALL.lvT);clearInterval(CALL.stT);CALL.pttDown=false;
+  for(const cid of [...CALL.peers.keys()])dropPeer(cid);stopLocal();CALL.room=null;CALL.inviteWith=null;CALL.wantCam=false;CALL.swap=false;CALL.focus=null;CALL.speaking.clear();CALL.tiles.forEach(t=>t.remove());CALL.tiles.clear();clearInterval(CALL.lvT);clearInterval(CALL.stT);CALL.pttDown=false;
   call('POST','/api/call/leave',{room,cid:S.cid}).catch(()=>{});
   if(!silent)beep('leave');
   if(C.cur===room&&room.startsWith('call_')){C.cur=C.dms.find(x=>x)||((C.channels.find(c=>c.kind==='text')||{}).id)||null}
   renderCallUI()}
-async function camOn(on){
-  if(on){try{const s=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:960},height:{ideal:540},facingMode:'user'}});CALL.cam=s.getVideoTracks()[0]}catch(e){toast(e&&e.name==='NotAllowedError'?'Kamera izni verilmedi':'Kamera açılamadı');return}}
-  else if(CALL.cam){CALL.cam.stop();CALL.cam=null}
+function isPhone(){return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)||(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent))}
+function canFlip(){return isPhone()||(CALL.camCount||0)>1}
+function camConstraints(facing){const ph=isPhone();const v={width:{ideal:ph?640:960},height:{ideal:ph?480:540},frameRate:{ideal:24,max:30}};
+  if(facing)v.facingMode={ideal:facing};else if(VS.camId)v.deviceId={exact:VS.camId};else v.facingMode={ideal:'user'};return v}
+function setCam(tr,facing){tr.contentHint='motion';tr.onended=()=>{if(CALL.cam===tr){CALL.cam=null;pushVideo();if(CALL.room&&!document.hidden)toast('Kamera kapandı')}};CALL.cam=tr;
+  const st=tr.getSettings?tr.getSettings():{};CALL.facing=st.facingMode||facing||'user';CALL.camDev=st.deviceId||'';
+  if(navigator.mediaDevices.enumerateDevices)navigator.mediaDevices.enumerateDevices().then(l=>{CALL.camCount=l.filter(d=>d.kind==='videoinput').length;renderCallUI();if(isVoiceCh(C.cur))renderStage()}).catch(()=>{})}
+async function camOn(on,facing){
+  if(on){CALL.wantCam=true;if(CALL.cam){CALL.cam.onended=null;CALL.cam.stop();CALL.cam=null}
+    try{const s=await navigator.mediaDevices.getUserMedia({video:camConstraints(facing),audio:false});setCam(s.getVideoTracks()[0],facing)}
+    catch(e){if(VS.camId&&!facing&&e&&(e.name==='OverconstrainedError'||e.name==='NotFoundError')){VS.camId='';saveVS();return camOn(true)}
+      CALL.wantCam=false;toast(e&&e.name==='NotAllowedError'?'Kamera izni verilmedi. İzni adres çubuğundaki kilit simgesinden verebilirsiniz.':e&&e.name==='NotReadableError'?'Kamera başka bir uygulama tarafından kullanılıyor':'Kamera açılamadı');await pushVideo();return}}
+  else{CALL.wantCam=false;if(CALL.cam){CALL.cam.onended=null;CALL.cam.stop();CALL.cam=null}}
   await pushVideo()}
-async function pushVideo(){for(const p of CALL.peers.values())if(p.tv)try{await p.tv.sender.replaceTrack(curVideo())}catch(_){}sendState();renderCallUI()}
+/* ön / arka kamera: önce eski kamera bırakılır (bazı telefonlar iki kamerayı aynı anda açamaz) */
+async function flipCam(){if(!CALL.cam)return;const want=CALL.facing==='environment'?'user':'environment';const oldDev=CALL.camDev;
+  CALL.cam.onended=null;CALL.cam.stop();CALL.cam=null;
+  const tryGet=async c=>{try{const s=await navigator.mediaDevices.getUserMedia({video:c,audio:false});return s.getVideoTracks()[0]}catch(_){return null}};
+  const base=camConstraints();delete base.deviceId;delete base.facingMode;
+  let tr=await tryGet({...base,facingMode:{exact:want}});
+  if(!tr){let devs=[];try{devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput')}catch(_){}
+    const i=devs.findIndex(d=>d.deviceId===oldDev);const nx=devs.length>1?devs[(i+1)%devs.length]:null;if(nx)tr=await tryGet({...base,deviceId:{exact:nx.deviceId}})}
+  if(!tr)tr=await tryGet(camConstraints());
+  if(!tr){toast('Kamera değiştirilemedi');await pushVideo();return}
+  setCam(tr,want);if(tr.getSettings&&!tr.getSettings().facingMode)CALL.facing=CALL.facing==='environment'?'user':'environment';
+  await pushVideo()}
+function tuneVideo(p){const s=p&&p.tv&&p.tv.sender;if(!s||!s.track)return;try{const prm=s.getParameters();if(!prm.encodings||!prm.encodings.length)return;
+  const n=CALL.peers.size;const scr=s.track===CALL.screen;const e=prm.encodings[0];
+  e.maxBitrate=scr?1500000:n<=1?900000:n<=3?550000:300000;e.maxFramerate=scr?15:24;e.scaleResolutionDownBy=!scr&&n>3?1.5:1;
+  prm.degradationPreference=scr?'maintain-resolution':'balanced';s.setParameters(prm).catch(()=>{})}catch(_){}}
+async function pushVideo(){const v=curVideo();for(const p of CALL.peers.values())if(p.tv)try{await p.tv.sender.replaceTrack(v);tuneVideo(p)}catch(_){}sendState();renderCallUI();if(S.view==='sohbet'&&C.cur===CALL.room)renderTiles()}
 async function shareScreen(on){
-  if(on){try{const s=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:15},audio:false});CALL.screen=s.getVideoTracks()[0];CALL.screen.onended=()=>{CALL.screen=null;pushVideo()}}catch(_){return}}
+  if(on){try{const s=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:15},audio:false});CALL.screen=s.getVideoTracks()[0];CALL.screen.contentHint='detail';CALL.screen.onended=()=>{CALL.screen=null;pushVideo()}}catch(_){return}}
   else if(CALL.screen){CALL.screen.stop();CALL.screen=null}
   await pushVideo()}
 function sendState(){if(CALL.room)call('POST','/api/call/state',{room:CALL.room,cid:S.cid,muted:CALL.muted||(VS.ptt&&!CALL.pttDown)||!CALL.mic,deaf:CALL.deaf,video:!!CALL.cam,screen:!!CALL.screen}).catch(()=>{})}
@@ -4090,7 +4176,7 @@ async function swapMic(){if(!CALL.room)return;let t;try{t=await getMic()}catch(e
 function voiceAct(a){
   if(a==='mic'){if(!CALL.mic){toast('Mikrofon yok ya da izin verilmedi');return}CALL.muted=!CALL.muted;if(!CALL.muted&&CALL.deaf){CALL.deaf=false;CALL.peers.forEach(applyOut)}applyMicGate();sendState();renderCallUI()}
   else if(a==='deaf'){CALL.deaf=!CALL.deaf;CALL.peers.forEach(applyOut);applyMicGate();sendState();renderCallUI();toast(CALL.deaf?'Sağırlaştırıldınız: kimseyi duymuyorsunuz, mikrofonunuz da kapalı':'Ses açıldı')}
-  else if(a==='cam')camOn(!CALL.cam);else if(a==='scr')shareScreen(!CALL.screen);else if(a==='leave')leaveCall();
+  else if(a==='cam')camOn(!CALL.cam);else if(a==='flip')flipCam();else if(a==='scr')shareScreen(!CALL.screen);else if(a==='leave')leaveCall();
   else if(a==='open'){openChannel(CALL.room)}
   else if(a==='set')openVoiceSettings();
   else if(a==='unblock'){unblockAudio()}}
@@ -4101,23 +4187,24 @@ function renderStage(){const el=$('ch-stage');const room=C.cur;
     el.innerHTML=`<div class="stage-join"><div class="big">${SVG.spk}</div><h2>${esc(chName(room))}</h2><p>${ps.length?ps.length+' kişi konuşuyor':'Odada kimse yok. İlk siz katılın, diğerleri sizi burada görür.'}</p>${ps.length?`<div class="who">${ps.map(p=>avatar(p.uid,p.name)).join('')}</div>`:''}
       ${inv?'<p>Bu görüşme sona erdi.</p>':`<div class="row"><button type="button" class="vbtn on" data-vjoin="${esc(room)}">${SVG.mic} Sesli katıl</button><button type="button" class="vbtn" data-vjoin="${esc(room)}" data-video="1">${SVG.cam} Kamerayla katıl</button><button type="button" class="vbtn" data-vact="set">${SVG.gear} Ses ayarları</button></div>`}
       <p style="font-size:.8rem;max-width:420px">İpucu: Aynı odada iki cihazla konuşursanız yankı olur; kulaklık kullanın. Telefonda sesi görüşme sırasında ses tuşlarıyla açın.</p></div>`;CALL.tiles.clear();return}
-  if(!el.querySelector('.tiles')){el.innerHTML=`<div class="tiles" id="tiles"></div><div class="stage-bar" id="stage-bar"></div>`;CALL.tiles.clear()}
+  if(!el.querySelector('.tiles')){el.innerHTML=`<div class="tiles" id="tiles"></div><div class="stage-bar" id="stage-bar"></div>`;CALL.tiles.clear();watchTiles()}
   $('stage-bar').innerHTML=(CALL.blocked?'<button type="button" class="vbtn on" data-vact="unblock" style="width:auto;border-radius:27px;padding:0 18px">🔊 Sesi aç</button>':'')+(VS.ptt?`<button type="button" class="vbtn ${CALL.pttDown?'on':''}" id="ptt-btn" style="width:auto;border-radius:27px;padding:0 18px" aria-pressed="${CALL.pttDown}">${SVG.mic} Bas konuş</button>`:'')+voiceBtns(true);
   const pb=$('ptt-btn');if(pb){const dn=e=>{e.preventDefault();pttSet(true)},up=()=>pttSet(false);pb.addEventListener('pointerdown',dn);pb.addEventListener('pointerup',up);pb.addEventListener('pointerleave',up);pb.addEventListener('pointercancel',up)}
   renderTiles()}
 function qBars(q){return `<span class="t-q q-${q}" aria-hidden="true"><i></i><i></i><i></i></span>`}
-function renderTiles(){const box=$('tiles');if(!box||C.cur!==CALL.room||S.view!=='sohbet')return;
+function renderTiles(){updMini();const box=$('tiles');if(!box||C.cur!==CALL.room||S.view!=='sohbet')return;
   const ps=participants();const me=S.meUser||{};
   const list=[{cid:S.cid,uid:S.me,name:me.name+' (siz)',muted:!micLive()||!CALL.mic,deaf:CALL.deaf,video:!!CALL.cam,screen:!!CALL.screen,self:true},...ps.filter(p=>p.cid!==S.cid)];
   const keep=new Set();
   for(const p of list){keep.add(p.cid);let t=CALL.tiles.get(p.cid);
-    if(!t){t=document.createElement('div');t.className='tile';t.dataset.cid=p.cid;t.dataset.uid=p.uid;t.innerHTML=`${avatar(p.uid,p.name,'t-av')}<video playsinline autoplay muted hidden></video><span class="t-name"></span><span class="t-st" hidden></span><span class="t-qw"></span>`;if(!p.self){t.tabIndex=0;t.title='Ses seviyesi için dokunun'}CALL.tiles.set(p.cid,t);box.appendChild(t)}
+    if(!t){t=document.createElement('div');t.className='tile';t.dataset.cid=p.cid;t.dataset.uid=p.uid;t.innerHTML=`${avatar(p.uid,p.name,'t-av')}<video playsinline autoplay muted hidden></video><span class="t-name"></span><span class="t-st" hidden></span><span class="t-qw"></span><span class="t-tools"><button type="button" data-tfocus title="Büyüt / küçült" aria-label="Büyüt">${SVG.expand}</button>${document.pictureInPictureEnabled&&!p.self?`<button type="button" data-tpip title="Pencere içinde pencere" aria-label="Pencere içinde pencere">${SVG.pip}</button>`:''}</span>`;if(!p.self){t.tabIndex=0;t.title='Ses seviyesi için dokunun'}
+      const vv=t.querySelector('video');vv.addEventListener('resize',()=>fitVideo(vv,t));vv.addEventListener('loadedmetadata',()=>fitVideo(vv,t));CALL.tiles.set(p.cid,t);box.appendChild(t)}
     else if(t.parentNode!==box)box.appendChild(t);
     t.classList.toggle('self',!!p.self);t.classList.toggle('spk',CALL.speaking.has(p.self?'me':p.cid));
     const v=t.querySelector('video');let track=null;
     if(p.self)track=curVideo();else{const peer=CALL.peers.get(p.cid);if(peer&&(p.video||p.screen)){track=peer.stream.getVideoTracks()[0]||null;if(track&&track.muted)track=null}}
     if(track){if(!v.srcObject||v.srcObject.getVideoTracks()[0]!==track){v.srcObject=new MediaStream([track]);v.play().catch(()=>{})}v.hidden=false}else{v.hidden=true;if(v.srcObject)v.srcObject=null}
-    v.classList.toggle('contain',!!p.screen);
+    v.dataset.scr=p.screen?'1':'';v.classList.toggle('mirror',!!(p.self&&track&&track===CALL.cam&&CALL.facing!=='environment'));t.classList.toggle('hasv',!!track);
     t.querySelector('.t-av').hidden=!!track;
     const lm=!p.self&&VS.mute[p.uid];const lv=!p.self&&VS.vol[p.uid]!=null&&VS.vol[p.uid]<1?Math.round(VS.vol[p.uid]*100):null;
     t.querySelector('.t-name').innerHTML=`${p.deaf?'<i title="Sağırlaştırılmış">🎧</i>':p.muted?'<i title="Mikrofon kapalı">🔇</i>':''}${esc(p.name)}${p.screen?' · ekran':''}${lm?' · sizde susturuldu':lv!=null?' · %'+lv:''}`;
@@ -4125,6 +4212,7 @@ function renderTiles(){const box=$('tiles');if(!box||C.cur!==CALL.room||S.view!=
     st.hidden=p.self||!cs||cs==='connected';st.textContent=cs==='failed'?'Bağlantı kurulamadı, yeniden deneniyor…':cs==='disconnected'?'Bağlantı koptu, yeniden bağlanıyor…':'Bağlanıyor…';
     const qw=t.querySelector('.t-qw');if(peer&&peer.q){qw.innerHTML=qBars(peer.q);qw.title=`Bağlantı ${({good:'iyi',mid:'orta',bad:'zayıf'})[peer.q]}${peer.rtt?` · gecikme ${Math.round(peer.rtt)} ms`:''}${peer.loss!=null?` · kayıp %${(peer.loss*100).toFixed(1)}`:''}`}else qw.innerHTML=''}
   for(const [cid,t] of CALL.tiles)if(!keep.has(cid)){t.remove();CALL.tiles.delete(cid)}
+  layoutTiles();
   const stage=$('ch-stage');let calling=stage.querySelector('.stage-calling');
   const waiting=CALL.outgoing&&list.length===1;
   if(waiting&&!calling){calling=document.createElement('div');calling.className='stage-calling';stage.appendChild(calling)}
@@ -4133,15 +4221,58 @@ function renderCallUI(){
   let pill=$('callpill');const show=CALL.room&&!(S.view==='sohbet'&&C.cur===CALL.room);
   if(!pill){pill=document.createElement('div');pill.id='callpill';pill.className='callpill';document.body.appendChild(pill);pill.addEventListener('click',e=>{const b=e.target.closest('[data-vact]');if(b)voiceAct(b.dataset.vact)})}
   pill.hidden=!show;
-  if(show)pill.innerHTML=`<div class="t" data-vact="open" role="button" tabindex="0"><b>● Sesli bağlı</b>${esc(chName(CALL.room))} · ${participants().length||1} kişi</div><button type="button" class="vbtn ${CALL.muted?'off':''}" data-vact="mic" aria-label="Mikrofon">${CALL.muted?SVG.micoff:SVG.mic}</button><button type="button" class="vbtn ${CALL.deaf?'off':''}" data-vact="deaf" aria-label="Sağırlaştır">${CALL.deaf?SVG.deafoff:SVG.deaf}</button><button type="button" class="vbtn end" data-vact="leave" aria-label="Ayrıl">${SVG.end}</button>`;
+  if(show)pill.innerHTML=`<div class="t" data-vact="open" role="button" tabindex="0"><b>● ${callVid()?'Görüntülü':'Sesli'} bağlı</b>${esc(chName(CALL.room))} · ${participants().length||1} kişi</div><button type="button" class="vbtn ${CALL.muted?'off':''}" data-vact="mic" aria-label="Mikrofon">${CALL.muted?SVG.micoff:SVG.mic}</button><button type="button" class="vbtn ${CALL.deaf?'off':''}" data-vact="deaf" aria-label="Sağırlaştır">${CALL.deaf?SVG.deafoff:SVG.deaf}</button><button type="button" class="vbtn end" data-vact="leave" aria-label="Ayrıl">${SVG.end}</button>`;
+  updMini();
   if(S.view==='sohbet'&&C.built){C.headKey='';renderChat(false)}}
+/* görüntü yerleşimi: ikili görüşmede karşı taraf tam ekran, siz köşede; kalabalıkta en büyük kutu düzeni */
+function fitVideo(v,t){if(!v||!t)return;if(v.dataset.scr==='1'){v.classList.add('contain');return}const vw=v.videoWidth,vh=v.videoHeight,tw=t.clientWidth,th=t.clientHeight;if(!vw||!vh||!tw||!th)return;const va=vw/vh,ta=tw/th;v.classList.toggle('contain',Math.max(va/ta,ta/va)>1.75)}
+function layoutTiles(){const box=$('tiles');if(!box)return;const tiles=[...box.children].filter(x=>x.classList&&x.classList.contains('tile'));const n=tiles.length;
+  const pad=parseFloat(getComputedStyle(box).paddingLeft)||12;const W=box.clientWidth-pad*2,H=box.clientHeight-pad*2;if(W<=0||H<=0)return;
+  if(CALL.focus&&!tiles.some(t=>t.dataset.cid===CALL.focus))CALL.focus=null;
+  const duo=n===2&&!CALL.focus,foc=!!CALL.focus&&n>1;box.classList.toggle('duo',duo);box.classList.toggle('focus',foc);
+  for(const t of tiles){t.classList.remove('big','pip');t.style.width='';t.style.height='';t.style.left='';t.style.top=''}
+  if(duo){const self=tiles.find(t=>t.classList.contains('self'))||tiles[0];const other=tiles.find(t=>t!==self);const big=CALL.swap?self:other,small=CALL.swap?other:self;
+    big.classList.add('big');small.classList.add('pip');const v=small.querySelector('video');const portrait=(v&&v.videoWidth&&!v.hidden)?v.videoHeight>v.videoWidth:H>W;
+    const w=Math.round(Math.min(W*(W>H?.24:.32),W>H?280:150));const h=Math.round(portrait?w*4/3:w*9/16);small.style.width=w+'px';small.style.height=h+'px';
+    const c=CALL.pipCorner||'br';const m=pad+8;small.style.left=(c[1]==='r'?box.clientWidth-w-m:m)+'px';small.style.top=(c[0]==='b'?box.clientHeight-h-m:m)+'px'}
+  else if(foc){const big=tiles.find(t=>t.dataset.cid===CALL.focus);big.classList.add('big');const sh=Math.max(70,Math.min(140,H*.2));box.style.setProperty('--strip',sh+'px');
+    for(const t of tiles)if(t!==big){t.style.height=sh+'px';t.style.width=Math.round(sh*16/9)+'px'}}
+  else{const as=tiles.map(t=>t.querySelector('video:not([hidden])')).filter(v=>v&&v.videoWidth&&v.videoHeight).map(v=>v.dataset.scr==='1'?16/9:v.videoWidth/v.videoHeight).sort((x,y)=>x-y);
+    const ar=as.length?Math.max(.56,Math.min(1.78,as[Math.floor(as.length/2)])):(W>=H?16/9:3/4);const gap=parseFloat(getComputedStyle(box).gap)||10;let best=0;
+    for(let c=1;c<=n;c++){const r=Math.ceil(n/c);const w=Math.min((W-gap*(c-1))/c,((H-gap*(r-1))/r)*ar);if(w>best)best=w}
+    for(const t of tiles){t.style.width=Math.floor(best)+'px';t.style.height=Math.floor(best/ar)+'px'}}
+  for(const t of tiles)fitVideo(t.querySelector('video:not([hidden])'),t)}
+let tilesRO=null;function watchTiles(){const box=$('tiles');if(!box||!window.ResizeObserver)return;if(tilesRO)tilesRO.disconnect();tilesRO=new ResizeObserver(()=>requestAnimationFrame(layoutTiles));tilesRO.observe(box)}
+/* köşedeki küçük görüntüyü sürükle; dokununca yer değiştir */
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('.tiles .tile.pip');if(!t)return;const box=$('tiles');const r=t.getBoundingClientRect(),br=box.getBoundingClientRect();
+  const d={t,x:e.clientX,y:e.clientY,ox:r.left-br.left,oy:r.top-br.top,moved:false,id:e.pointerId};try{t.setPointerCapture(e.pointerId)}catch(_){}
+  const mv=ev=>{if(ev.pointerId!==d.id)return;const dx=ev.clientX-d.x,dy=ev.clientY-d.y;if(!d.moved&&Math.hypot(dx,dy)<6)return;d.moved=true;t.classList.add('drag');t.style.left=(d.ox+dx)+'px';t.style.top=(d.oy+dy)+'px'};
+  const up=ev=>{if(ev.pointerId!==d.id)return;t.removeEventListener('pointermove',mv);t.removeEventListener('pointerup',up);t.removeEventListener('pointercancel',up);t.classList.remove('drag');
+    if(d.moved){CALL.dragAt=Date.now();const r2=t.getBoundingClientRect();const cx=r2.left+r2.width/2-br.left,cy=r2.top+r2.height/2-br.top;CALL.pipCorner=(cy>br.height/2?'b':'t')+(cx>br.width/2?'r':'l')}
+    else{CALL.swap=!CALL.swap;CALL.dragAt=Date.now()}layoutTiles()};
+  t.addEventListener('pointermove',mv);t.addEventListener('pointerup',up);t.addEventListener('pointercancel',up)});
+document.addEventListener('click',e=>{const f=e.target.closest('[data-tfocus]');if(f){const t=f.closest('.tile');if(!t)return;const n=CALL.tiles.size;
+    if(n<=2){if(document.fullscreenElement){document.exitFullscreen().catch(()=>{});return}const v=t.querySelector('video');if(t.requestFullscreen)t.requestFullscreen().catch(()=>{});else if(v&&v.webkitEnterFullscreen&&!v.hidden)v.webkitEnterFullscreen();return}
+    CALL.focus=CALL.focus===t.dataset.cid?null:t.dataset.cid;layoutTiles();return}
+  const pp=e.target.closest('[data-tpip]');if(pp){const v=pp.closest('.tile').querySelector('video');if(!v||v.hidden){toast('Bu kişinin kamerası kapalı');return}(document.pictureInPictureElement===v?document.exitPictureInPicture():v.requestPictureInPicture()).catch(()=>toast('Pencere içinde pencere açılamadı'));return}});
+document.addEventListener('dblclick',e=>{const t=e.target.closest('.tiles .tile');if(!t||t.classList.contains('pip'))return;if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else if(t.requestFullscreen)t.requestFullscreen().catch(()=>{})});
+document.addEventListener('fullscreenchange',()=>setTimeout(layoutTiles,60));
+window.addEventListener('resize',()=>requestAnimationFrame(layoutTiles));
+/* başka sayfadayken karşı tarafın görüntüsü küçük pencerede */
+function updMini(){let m=$('callmini');const show=CALL.room&&!(S.view==='sohbet'&&C.cur===CALL.room);let track=null;
+  if(show)for(const p of participants()){if(p.cid===S.cid||!(p.video||p.screen))continue;const peer=CALL.peers.get(p.cid);const tr=peer&&peer.stream.getVideoTracks()[0];if(tr&&!tr.muted&&tr.readyState==='live'){track=tr;break}}
+  if(!track){if(m&&!m.hidden){m.hidden=true;const v=m.querySelector('video');v.srcObject=null}return}
+  if(!m){m=document.createElement('div');m.id='callmini';m.className='callmini';m.setAttribute('role','button');m.tabIndex=0;m.title='Görüşmeye dön';m.innerHTML='<video playsinline autoplay muted></video><span>Görüşmeye dön</span>';m.addEventListener('click',()=>voiceAct('open'));document.body.appendChild(m)}
+  m.hidden=false;const v=m.querySelector('video');if(!v.srcObject||v.srcObject.getVideoTracks()[0]!==track){v.srcObject=new MediaStream([track]);v.play().catch(()=>{})}}
+/* telefon arka plandan dönünce kamera kapanmışsa yeniden aç */
+document.addEventListener('visibilitychange',()=>{if(document.hidden||!CALL.room||!CALL.wantCam)return;if(!CALL.cam||CALL.cam.readyState==='ended'){CALL.cam=null;camOn(true,isPhone()?CALL.facing:undefined)}});
 /* bas-konuş */
 function pttSet(on){if(!VS.ptt||!CALL.room||CALL.pttDown===on)return;CALL.pttDown=on;applyMicGate();sendState();const b=$('ptt-btn');if(b){b.classList.toggle('on',on);b.setAttribute('aria-pressed',on)}renderTiles()}
 window.addEventListener('keydown',e=>{if(e.code!=='Space'||!VS.ptt||!CALL.room||e.repeat)return;const tg=(document.activeElement||{}).tagName||'';if(/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(tg))return;e.preventDefault();pttSet(true)});
 window.addEventListener('keyup',e=>{if(e.code==='Space')pttSet(false)});
 window.addEventListener('blur',()=>pttSet(false));
 /* kişi başı ses seviyesi */
-document.addEventListener('click',e=>{const t=e.target.closest('.tile:not(.self)');if(!t||!CALL.room)return;const uid=t.dataset.uid;if(!uid)return;
+document.addEventListener('click',e=>{if(e.target.closest('.t-tools')||e.target.closest('.tile.pip')||Date.now()-(CALL.dragAt||0)<350)return;const t=e.target.closest('.tile:not(.self)');if(!t||!CALL.room)return;const uid=t.dataset.uid;if(!uid)return;
   document.querySelectorAll('.rx-pop').forEach(x=>x.remove());const p=document.createElement('div');p.className='rx-pop vol-pop';
   const v=Math.round((VS.vol[uid]??1)*100);p.innerHTML=`<b>${esc(uname(uid))}</b><label>Ses seviyesi <span id="vp-v">%${v}</span><input type="range" min="0" max="100" value="${v}" id="vp-r"></label><label class="vp-m"><input type="checkbox" id="vp-m" ${VS.mute[uid]?'checked':''}> Bu kişiyi sadece kendimde sustur</label>`;
   document.body.appendChild(p);const r=t.getBoundingClientRect();p.style.top=Math.max(8,Math.min(innerHeight-p.offsetHeight-8,r.top+r.height/2-p.offsetHeight/2))+'px';p.style.left=Math.max(8,Math.min(innerWidth-p.offsetWidth-8,r.left+r.width/2-p.offsetWidth/2))+'px';
@@ -4152,12 +4283,13 @@ document.addEventListener('click',e=>{const t=e.target.closest('.tile:not(.self)
 /* ses ayarları */
 async function openVoiceSettings(){
   let devs=[];try{devs=await navigator.mediaDevices.enumerateDevices()}catch(_){}
-  const mics=devs.filter(d=>d.kind==='audioinput'),spks=devs.filter(d=>d.kind==='audiooutput');const canSink=typeof HTMLMediaElement!=='undefined'&&'setSinkId' in HTMLMediaElement.prototype;
+  const mics=devs.filter(d=>d.kind==='audioinput'),spks=devs.filter(d=>d.kind==='audiooutput'),cams=devs.filter(d=>d.kind==='videoinput');const canSink=typeof HTMLMediaElement!=='undefined'&&'setSinkId' in HTMLMediaElement.prototype;
   const opt=(l,sel,def)=>`<option value="">${def}</option>`+l.map((d,i)=>`<option value="${esc(d.deviceId)}" ${d.deviceId===sel?'selected':''}>${esc(d.label||('Cihaz '+(i+1)))}</option>`).join('');
   const m=chModal(`<div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-family:var(--f-display);flex:1;font-size:1.1rem">Ses ve görüntü ayarları</h2><button type="button" data-mclose class="cs-ib" aria-label="Kapat">×</button></div>
     <div class="field"><label for="vs-mic">Mikrofon</label><select id="vs-mic">${opt(mics,VS.micId,'Varsayılan mikrofon')}</select></div>
     <div class="vs-meter"><span>Mikrofon testi: konuşun</span><div class="bar"><i id="vs-lv"></i></div></div>
     <div class="field"><label for="vs-spk">Hoparlör / kulaklık</label>${canSink&&spks.length?`<select id="vs-spk">${opt(spks,VS.spkId,'Varsayılan çıkış')}</select>`:'<p style="margin:0;color:var(--dm);font-size:.84rem">Bu cihazda ses çıkışını telefon / tarayıcı seçer. Bluetooth kulaklık bağlıysa ses ona gider.</p>'}</div>
+    ${cams.length?`<div class="field"><label for="vs-cam">Kamera</label><select id="vs-cam">${opt(cams,VS.camId,isPhone()?'Ön kamera':'Varsayılan kamera')}</select></div>`:''}
     <label class="toggle"><input type="checkbox" id="vs-ec" ${VS.ec?'checked':''}> Yankı engelleme</label>
     <label class="toggle"><input type="checkbox" id="vs-ns" ${VS.ns?'checked':''}> Gürültü azaltma (arka plan sesini keser)</label>
     <label class="toggle"><input type="checkbox" id="vs-agc" ${VS.agc?'checked':''}> Otomatik ses seviyesi</label>
@@ -4170,9 +4302,10 @@ async function openVoiceSettings(){
   startTest();loop();$('vs-mic').onchange=startTest;
   m.onclick=e=>{if(e.target===m||e.target.closest('[data-mclose]')){m.hidden=true;cancelAnimationFrame(raf);if(test)test.getTracks().forEach(t=>t.stop())}};
   $('vs-save').onclick=async()=>{const micCh=VS.micId!==$('vs-mic').value||VS.ec!==$('vs-ec').checked||VS.ns!==$('vs-ns').checked||VS.agc!==$('vs-agc').checked;
+    const camCh=!!$('vs-cam')&&VS.camId!==$('vs-cam').value;if($('vs-cam'))VS.camId=$('vs-cam').value;
     VS.micId=$('vs-mic').value;if($('vs-spk'))VS.spkId=$('vs-spk').value;VS.ec=$('vs-ec').checked;VS.ns=$('vs-ns').checked;VS.agc=$('vs-agc').checked;VS.ptt=$('vs-ptt').checked;saveVS();
     m.hidden=true;cancelAnimationFrame(raf);if(test)test.getTracks().forEach(t=>t.stop());
-    if(CALL.room){if(micCh)await swapMic();CALL.pttDown=false;applyMicGate();CALL.peers.forEach(applyOut);sendState();if(isVoiceCh(C.cur))renderStage();renderCallUI()}
+    if(CALL.room){if(micCh)await swapMic();if(camCh&&CALL.cam)await camOn(true);CALL.pttDown=false;applyMicGate();CALL.peers.forEach(applyOut);sendState();if(isVoiceCh(C.cur))renderStage();renderCallUI()}
     toast('Ses ayarları kaydedildi')}}
 /* konuşma göstergesi ve bağlantı kalitesi */
 function audioCtx(){if(!CALL.actx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;CALL.actx=new A()}if(CALL.actx.state==='suspended')CALL.actx.resume().catch(()=>{});return CALL.actx}

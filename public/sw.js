@@ -15,7 +15,23 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/takip/')) return;
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('/', copy)); return res; }).catch(() => caches.match('/')));
+    // önce ağ; sunucu uykudan uyanırken 6 sn içinde cevap gelmezse kayıtlı uygulama kabuğu açılır
+    e.respondWith((async () => {
+      const net = fetch(req).then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put('/', copy)); } return res; });
+      const cached = await caches.match('/');
+      if (!cached) return net.catch(() => Response.error());
+      const timeout = new Promise(r => setTimeout(() => r(null), 6000));
+      try { return (await Promise.race([net, timeout])) || cached; } catch (_) { return cached; }
+    })());
+    return;
+  }
+  // değişmeyen dosyalar (kütüphaneler, simgeler): önce önbellek, arkada yenile
+  if (url.pathname.startsWith('/vendor/') || /\.(png|svg|ico)$/.test(url.pathname)) {
+    e.respondWith(caches.open(CACHE).then(async c => {
+      const hit = await c.match(req);
+      const net = fetch(req).then(res => { if (res.ok) c.put(req, res.clone()); return res; }).catch(() => hit);
+      return hit || net;
+    }));
     return;
   }
   e.respondWith(fetch(req).then(res => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); } return res; }).catch(() => caches.match(req)));

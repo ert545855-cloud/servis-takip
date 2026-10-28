@@ -5,13 +5,17 @@
   "main": "server.js",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "node build.js",
+    "postinstall": "node build.js"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "clean-css": "5.3.3",
     "express": "4.21.2",
+    "javascript-obfuscator": "4.1.1",
     "pg": "8.13.1",
     "web-push": "3.6.7",
     "xlsx": "0.18.5"

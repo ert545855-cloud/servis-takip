@@ -20,6 +20,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const path = require('path');
+const fs = require('fs');
 const { Pool } = require('pg');
 let webpush = null;
 let XLSX = null;
@@ -375,15 +376,26 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), display-capture=(self), geolocation=(), payment=(), usb=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  if (req.secure) res.setHeader('Strict-Transport-Security', 'max-age=15552000');
   next();
 });
 const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
+/* oturum önbelleği: her istekte veritabanına gitmemek için 15 sn tutulur; kullanıcı/oturum değişince temizlenir */
+const SESS = new Map();
+function sessFlush() { SESS.clear(); }
+setInterval(() => { const t = Date.now(); for (const [k, v] of SESS) if (t - v.at > 15000) SESS.delete(k); }, 30000).unref();
 async function auth(req, res, next) {
   const tok = parseCookies(req).sid;
   if (!tok) return res.status(401).json({ error: 'Giriş gerekli' });
+  const c = SESS.get(tok);
+  if (c && Date.now() - c.at < 15000) { req.user = { ...c.user }; maybeDailyReport(false); return next(); }
   const { rows } = await pool.query("SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = $1 AND s.expires_at > now() AND u.status = 'active'", [tok]);
-  if (!rows[0]) return res.status(401).json({ error: 'Oturum süresi doldu' });
+  if (!rows[0]) { SESS.delete(tok); return res.status(401).json({ error: 'Oturum süresi doldu' }); }
+  if (SESS.size > 5000) SESS.clear();
+  SESS.set(tok, { user: Object.freeze({ ...rows[0] }), at: Date.now() });
   req.user = rows[0];
   maybeDailyReport(false);
   next();
@@ -397,7 +409,10 @@ function sameOrigin(req, res, next) {
   next();
 }
 app.use('/api', sameOrigin);
+const shield = require('./shield');
+app.use('/api', shield.middleware);
 app.get('/healthz', (req, res) => res.send('ok'));
+app.get('/api/session', wrap(auth), (req, res) => res.json({ ok: true }));
 
 /* hız sınırı */
 const tries = new Map();
@@ -431,7 +446,7 @@ app.post('/api/login', express.json({ limit: '10kb' }), wrap(async (req, res) =>
 }));
 app.post('/api/logout', wrap(async (req, res) => {
   const tok = parseCookies(req).sid;
-  if (tok) await pool.query('DELETE FROM sessions WHERE token = $1', [tok]);
+  if (tok) await pool.query('DELETE FROM sessions WHERE token = $1', [tok]); sessFlush();
   res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
   res.json({ ok: true });
 }));
@@ -498,14 +513,14 @@ app.post('/api/reset', express.json({ limit: '10kb' }), wrap(async (req, res) =>
   if (pw.length < 6) return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
   const { rows } = await pool.query('UPDATE users SET pass = $1, reset_token = NULL WHERE reset_token = $2 AND reset_expires > now() RETURNING id', [hashPass(pw), token]);
   if (!rows[0]) return res.status(400).json({ error: 'Bağlantının süresi dolmuş. Şifre sıfırlamayı yeniden isteyin.' });
-  await pool.query('DELETE FROM sessions WHERE user_id = $1', [rows[0].id]);
+  await pool.query('DELETE FROM sessions WHERE user_id = $1', [rows[0].id]); sessFlush();
   res.json({ ok: true });
 }));
 app.post('/api/me/password', express.json({ limit: '10kb' }), wrap(auth), wrap(async (req, res) => {
   const { current, next: nw } = req.body || {};
   if (!checkPass(current || '', req.user.pass)) return res.status(400).json({ error: 'Mevcut şifre hatalı' });
   if (!nw || String(nw).length < 6) return res.status(400).json({ error: 'Yeni şifre en az 6 karakter olmalı' });
-  await pool.query('UPDATE users SET pass = $1 WHERE id = $2', [hashPass(nw), req.user.id]);
+  await pool.query('UPDATE users SET pass = $1 WHERE id = $2', [hashPass(nw), req.user.id]); sessFlush();
   res.json({ ok: true });
 }));
 app.patch('/api/me', express.json({ limit: '10kb' }), wrap(auth), wrap(async (req, res) => {
@@ -518,7 +533,7 @@ app.patch('/api/me', express.json({ limit: '10kb' }), wrap(auth), wrap(async (re
     if (e && !validEmail(e)) return res.status(400).json({ error: 'Geçerli bir e-posta adresi girin' });
     email = e || null;
   }
-  try { await pool.query('UPDATE users SET name=$1, phone=$2, branch=$3, email=$4 WHERE id=$5', [name, phone, branch, email, req.user.id]); }
+  try { await pool.query('UPDATE users SET name=$1, phone=$2, branch=$3, email=$4 WHERE id=$5', [name, phone, branch, email, req.user.id]); sessFlush(); }
   catch (e) { if (e.code === '23505') return res.status(400).json({ error: 'Bu e-posta başka bir hesapta kayıtlı' }); throw e; }
   const u = { ...req.user, name, phone, branch, email };
   broadcast({ type: 'user', user: publicUser(u) });
@@ -533,12 +548,12 @@ app.post('/api/me/avatar', wrap(auth), express.raw({ type: () => true, limit: 3 
   const id = newId(24);
   await pool.query("INSERT INTO files (id, name, type, size, data, uploaded_by, scope) VALUES ($1,$2,$3,$4,$5,$6,'avatar')", [id, 'profil.jpg', type, req.body.length, req.body, req.user.id]);
   if (req.user.avatar) await pool.query("DELETE FROM files WHERE id = $1 AND scope = 'avatar'", [req.user.avatar]);
-  await pool.query('UPDATE users SET avatar = $1 WHERE id = $2', [id, req.user.id]);
+  await pool.query('UPDATE users SET avatar = $1 WHERE id = $2', [id, req.user.id]); sessFlush();
   const u = publicUser({ ...req.user, avatar: id }); broadcast({ type: 'user', user: u }); res.json(u);
 }));
 app.delete('/api/me/avatar', wrap(auth), wrap(async (req, res) => {
   if (req.user.avatar) await pool.query("DELETE FROM files WHERE id = $1 AND scope = 'avatar'", [req.user.avatar]);
-  await pool.query('UPDATE users SET avatar = NULL WHERE id = $1', [req.user.id]);
+  await pool.query('UPDATE users SET avatar = NULL WHERE id = $1', [req.user.id]); sessFlush();
   const u = publicUser({ ...req.user, avatar: null }); broadcast({ type: 'user', user: u }); res.json(u);
 }));
 
@@ -556,6 +571,7 @@ app.get('/api/bootstrap', wrap(auth), wrap(async (req, res) => {
 }));
 
 app.get('/api/events', wrap(auth), (req, res) => {
+  shield.wrapSSE(req, res);
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
   const c = { res, cid: newId(12), user: { id: req.user.id, role: req.user.role, branch: req.user.branch || '', name: req.user.name } };
@@ -983,14 +999,14 @@ app.patch('/api/users/:id', express.json({ limit: '10kb' }), wrap(auth), isAdmin
     pass = hashPass(req.body.password);
   }
   if (req.body.password || status !== 'active' || role !== u.role) await pool.query('DELETE FROM sessions WHERE user_id = $1', [u.id]);
-  await pool.query('UPDATE users SET name=$1, role=$2, pass=$3, status=$4, branch=$5, email_verified = email_verified OR $6 WHERE id=$7', [name, role, pass, status, branch, status === 'active' && u.status === 'pending', u.id]);
+  await pool.query('UPDATE users SET name=$1, role=$2, pass=$3, status=$4, branch=$5, email_verified = email_verified OR $6 WHERE id=$7', [name, role, pass, status, branch, status === 'active' && u.status === 'pending', u.id]); sessFlush();
   const out = publicUser({ ...u, name, role, status, branch });
   broadcast({ type: 'user', user: out });
   res.json(out);
 }));
 app.delete('/api/users/:id', wrap(auth), isAdmin, wrap(async (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: 'Kendinizi silemezsiniz' });
-  await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
+  await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]); sessFlush();
   broadcast({ type: 'user-removed', id: req.params.id });
   res.json({ ok: true });
 }));
@@ -1122,8 +1138,10 @@ const chat = require('./chat')({ app, pool, express, wrap, auth, isAdmin, newId,
 const tables = require('./tables')({ app, pool, express, wrap, auth, newId, clients, pushUser, baseUrl, validId, getSettings, appUrl: () => APP_URL_RAW() });
 
 /* sayfa */
-app.use(express.static(path.join(__dirname, 'public'), { index: 'index.html', maxAge: 0, setHeaders: (res, p) => { if (p.endsWith('sw.js')) res.setHeader('Service-Worker-Allowed', '/'); } }));
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+const WEB_DIR = fs.existsSync(path.join(__dirname, 'dist', 'index.html')) && process.env.SERVE_SOURCE !== '1' ? path.join(__dirname, 'dist') : path.join(__dirname, 'public');
+const web = require('./static')(app, WEB_DIR);
+if (!shield.SH && WEB_DIR.endsWith('dist')) console.warn('API kalkanı anahtarı bulunamadı; istemci düz JSON kullanacak');
+app.get('*', (req, res) => web.sendIndex(req, res));
 
 app.use((err, req, res, next) => {
   if (err && err.type === 'entity.too.large') return res.status(413).json({ error: 'Dosya çok büyük (en fazla 15 MB)' });
