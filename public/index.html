@@ -427,7 +427,9 @@ td.nw{white-space:nowrap}
 @media print{
   html,body{height:auto!important;overflow:visible!important;background:#fff!important}
   body.printing>*:not(#print-area){display:none!important}
-  body.printing #print-area{display:block!important}
+  body.printing #print-area{display:block!important;width:100%!important;margin:0!important;padding:0!important}
+  :root{padding:0!important}
+  html,body{margin:0!important;padding:0!important;width:auto!important;min-width:0!important}
 }
 .pdoc{color:#111;background:#fff;font-family:"Figtree","Segoe UI",Arial,sans-serif;font-size:12.5pt;line-height:1.4}
 .pdoc header{display:flex;gap:12px;align-items:center;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:10px}
@@ -574,10 +576,15 @@ td.nw{white-space:nowrap}
 .rp-st label:has(input:checked){background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .rp-st input{accent-color:var(--accent)}
 .rp-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.pdoc.rlist{font-size:10pt}
-.pdoc.rlist td,.pdoc.rlist th{font-size:9pt;padding:4px 5px}
+.pdoc.rlist,.pdoc.rone{width:100%;max-width:190mm;margin:0 auto;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pdoc.rlist{font-size:9.5pt}
+.pdoc.rlist table{table-layout:fixed;width:100%}
+.pdoc.rlist td,.pdoc.rlist th{font-size:8.8pt;padding:4px 5px;overflow-wrap:break-word;word-break:normal;hyphens:manual}
+.pdoc.rlist th{font-size:7.6pt;text-transform:uppercase;letter-spacing:.02em;white-space:normal;line-height:1.2}
+.pdoc.rlist .qty{font-size:11pt;font-weight:800}
+.pdoc.rlist td.st{font-size:8pt;white-space:nowrap}
 .pdoc.rlist tr{page-break-inside:avoid}
-.pdoc.rlist .mono{font-family:"JetBrains Mono",ui-monospace,monospace;white-space:nowrap}
+.pdoc.rlist .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
 .pdoc.rlist .num{text-align:right;white-space:nowrap}
 .pdoc.rlist .ck{width:7mm;text-align:center;font-size:13pt;line-height:1}
 .pdoc.rlist .acil{display:inline-block;border:1px solid #111;font-weight:800;font-size:7.5pt;padding:0 3px;margin-left:4px;letter-spacing:.04em}
@@ -3085,33 +3092,41 @@ $('rp-modal').addEventListener('change',rpInfo);$('rp-modal').addEventListener('
 $('rp-x').onclick=$('rp-cancel').onclick=()=>{$('rp-modal').hidden=true};
 $('rp-modal').addEventListener('click',e=>{if(e.target.id==='rp-modal')$('rp-modal').hidden=true});
 $('rp-go').onclick=()=>{const o=rpRead();const l=rpList(o);if(!l.length){toast('Seçimlere uyan talep yok');return}rpSave(o);$('rp-modal').hidden=true;printReqList(l,o)};
+const RP_PAGE='<style>@page{size:A4 portrait;margin:12mm 10mm}</style>';
 function printReqList(list,o){
   const stamp2=new Date().toLocaleString('tr-TR',{dateStyle:'short',timeStyle:'short'});
   const grpKey=r=>o.group==='from'?(r.fromBranch||'Şube belirtilmedi'):o.group==='to'?(r.toBranch||'Şube belirtilmedi'):o.group==='status'?(REQ_MAP[r.status]?.t||r.status):'';
   const ord=(a,b)=>((b.priority==='acil')-(a.priority==='acil'))||String(a.productCode||a.productName||'').localeCompare(String(b.productCode||b.productName||''),'tr')||String(a.createdAt||'').localeCompare(String(b.createdAt||''));
   const groups=new Map();for(const r of [...list].sort(ord)){const k=grpKey(r);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r)}
   const keys=[...groups.keys()].sort((a,b)=>o.group==='status'?REQ_ST.findIndex(x=>x.t===a)-REQ_ST.findIndex(x=>x.t===b):a.localeCompare(b,'tr'));
-  const showFrom=o.group!=='from',showTo=o.group!=='to',showSt=o.group!=='status';
-  const who=r=>r.purpose==='musteri'?`Müşteri${r.customerName?': '+esc(r.customerName):''}${r.customerPhone?`<div class="sub">${esc(r.customerPhone)}</div>`:''}`:'Mağaza';
-  const head=`<tr>${o.check?'<th class="ck">✓</th>':''}<th>#</th><th>Talep no</th><th>Ürün kodu</th><th>Ürün</th><th class="num">Adet</th>${showFrom?'<th>Talep edilen şube</th>':''}${showTo?'<th>Talep eden şube</th>':''}<th>Kimin için</th><th>Satıcı</th><th>Tarih</th><th>Son tarih</th>${showSt?'<th>Durum</th>':''}<th>Not</th></tr>`;
-  const row=(r,i)=>`<tr>${o.check?'<td class="ck">☐</td>':''}<td>${i+1}</td><td class="mono">${esc(r.no||'')}</td><td class="mono">${esc(r.productCode||'—')}</td><td>${esc(r.productName||'')}${r.priority==='acil'?'<span class="acil">ACİL</span>':''}</td><td class="num"><b>${rqQty(r)}</b></td>${showFrom?`<td>${esc(r.fromBranch||'—')}</td>`:''}${showTo?`<td>${esc(r.toBranch||'—')}</td>`:''}<td>${who(r)}</td><td>${esc(r.requesterName||'')}</td><td class="mono">${esc(fmtS((r.createdAt||'').slice(0,10)))}</td><td class="mono">${r.neededBy?esc(fmtS(r.neededBy)):''}</td>${showSt?`<td>${esc(REQ_MAP[r.status]?.t||'')}</td>`:''}<td>${esc(r.note||'')}${r.status==='iptal'&&r.cancelReason?`<div class="sub">${esc(r.cancelReason)}</div>`:''}</td></tr>`;
+  const showSt=o.group!=='status';
+  // dikey A4 (190 mm): sütun genişlikleri sabit, uzun metin alt satıra geçer
+  const route=r=>o.group==='from'?esc(r.toBranch||'—'):o.group==='to'?esc(r.fromBranch||'—'):`${esc(r.fromBranch||'—')}<div class="sub">→ ${esc(r.toBranch||'—')}</div>`;
+  const routeH=o.group==='from'?'Talep eden şube':o.group==='to'?'Talep edilen şube':'Şube (nereden → nereye)';
+  const who=r=>r.purpose==='musteri'?`${esc(r.customerName||'Müşteri')}${r.customerPhone?`<div class="sub">${esc(r.customerPhone)}</div>`:''}`:'<span class="sub">Mağaza için</span>';
+  const cols=`<colgroup>${o.check?'<col style="width:5%">':''}<col style="width:4%"><col style="width:${(showSt?29:42)+(o.check?0:5)}%"><col style="width:7%"><col style="width:14%"><col style="width:15%"><col style="width:13%">${showSt?'<col style="width:13%">':''}</colgroup>`;
+  const head=`<tr>${o.check?'<th class="ck">✓</th>':''}<th class="num">#</th><th>Ürün</th><th class="num">Adet</th><th>${routeH}</th><th>Kimin için</th><th>Satıcı / tarih</th>${showSt?'<th>Durum</th>':''}</tr>`;
+  const row=(r,i)=>`<tr>${o.check?'<td class="ck">☐</td>':''}<td class="num">${i+1}</td>
+    <td><b>${esc(r.productName||'')}</b>${r.priority==='acil'?'<span class="acil">ACİL</span>':''}<div class="sub mono">${esc(r.productCode||'kod yok')} · ${esc(r.no||'')}</div>${r.note?`<div class="sub">Not: ${esc(r.note)}</div>`:''}${r.status==='iptal'&&r.cancelReason?`<div class="sub">${esc(r.cancelReason)}</div>`:''}</td>
+    <td class="num qty">${rqQty(r)}</td><td>${route(r)}</td><td>${who(r)}</td>
+    <td>${esc(r.requesterName||'')}<div class="sub">${esc(fmtS((r.createdAt||'').slice(0,10)))}${r.neededBy?` · son ${esc(fmtS(r.neededBy))}`:''}</div></td>${showSt?`<td class="st">${esc(REQ_MAP[r.status]?.t||'')}</td>`:''}</tr>`;
   const tq=list.reduce((a,r)=>a+rqQty(r),0);
   let sum='';
   if(o.sum){const m=new Map();for(const r of list){const k=norm(r.productCode||'')||'ad:'+norm(r.productName||'');const x=m.get(k)||{code:r.productCode||'',name:r.productName||'',qty:0,n:0,br:new Set()};x.qty+=rqQty(r);x.n++;if(r.fromBranch)x.br.add(r.fromBranch);m.set(k,x)}
     const rows=[...m.values()].sort((a,b)=>b.qty-a.qty||a.name.localeCompare(b.name,'tr'));
-    sum=`<div class="grp"><h3>Ürün özeti <span>${rows.length} farklı ürün · ${tq} adet</span></h3><table><thead><tr>${o.check?'<th class="ck">✓</th>':''}<th>Ürün kodu</th><th>Ürün</th><th class="num">Toplam adet</th><th class="num">Talep sayısı</th><th>Talep edilen şube</th></tr></thead><tbody>${rows.map(x=>`<tr>${o.check?'<td class="ck">☐</td>':''}<td class="mono">${esc(x.code||'—')}</td><td>${esc(x.name)}</td><td class="num"><b>${x.qty}</b></td><td class="num">${x.n}</td><td>${esc([...x.br].join(', '))}</td></tr>`).join('')}<tr class="tot">${o.check?'<td></td>':''}<td colspan="2">Toplam</td><td class="num">${tq}</td><td class="num">${list.length}</td><td></td></tr></tbody></table></div>`}
+    sum=`<div class="grp"><h3>Ürün özeti <span>${rows.length} farklı ürün · ${tq} adet</span></h3><table><colgroup>${o.check?'<col style="width:5%">':''}<col style="width:15%"><col style="width:${o.check?42:47}%"><col style="width:10%"><col style="width:8%"><col style="width:20%"></colgroup><thead><tr>${o.check?'<th class="ck">✓</th>':''}<th>Ürün kodu</th><th>Ürün</th><th class="num">Adet</th><th class="num">Talep</th><th>Talep edilen şube</th></tr></thead><tbody>${rows.map(x=>`<tr>${o.check?'<td class="ck">☐</td>':''}<td class="mono">${esc(x.code||'—')}</td><td>${esc(x.name)}</td><td class="num qty">${x.qty}</td><td class="num">${x.n}</td><td>${esc([...x.br].join(', '))}</td></tr>`).join('')}<tr class="tot">${o.check?'<td></td>':''}<td colspan="2">Toplam</td><td class="num">${tq}</td><td class="num">${list.length}</td><td></td></tr></tbody></table></div>`}
   const body=keys.map((k,gi)=>{const items=groups.get(k);const q=items.reduce((a,r)=>a+rqQty(r),0);
-    return `<div class="grp${o.page&&gi?' brk':''}">${k?`<h3>${o.group==='from'?'Talep edilen şube: ':o.group==='to'?'Talep eden şube: ':''}${esc(k)} <span>${items.length} talep · ${q} adet</span></h3>`:''}<table><thead>${head}</thead><tbody>${items.map(row).join('')}</tbody></table></div>`}).join('');
+    return `<div class="grp${o.page&&gi?' brk':''}">${k?`<h3>${o.group==='from'?'Talep edilen şube: ':o.group==='to'?'Talep eden şube: ':''}${esc(k)} <span>${items.length} talep · ${q} adet</span></h3>`:''}<table>${cols}<thead>${head}</thead><tbody>${items.map(row).join('')}</tbody></table></div>`}).join('');
   const sts=o.st.length===REQ_ST.length?'Tüm durumlar':o.st.map(k=>REQ_MAP[k].t).join(', ');
   const rng=o.from||o.to?` · Tarih: ${o.from?fmt(o.from):'…'} – ${o.to?fmt(o.to):'…'}`:'';
-  printHTML(`<style>@page{size:A4 landscape;margin:10mm}</style><div class="pdoc rlist">${storeHead('Ürün Talep Listesi',`${list.length} talep · ${tq} adet`,today())}
+  printHTML(`${RP_PAGE}<div class="pdoc rlist">${storeHead('Ürün Talep Listesi',`${list.length} talep · ${tq} adet`,today())}
     <div class="meta">Durum: ${esc(sts)}${esc(rng)} · Hazırlayan: ${esc((S.meUser&&S.meUser.name)||'')} · Yazdırma: ${esc(stamp2)}</div>
     ${sum}${body}
     <div class="sigs"><div><span>Hazırlayan</span></div><div><span>Teslim alan / kontrol eden</span></div></div></div>`)}
 function printReqOne(r){
   const kv=(l,v)=>v?`<tr><td>${esc(l)}</td><td>${v}</td></tr>`:'';
-  printHTML(`<div class="pdoc">${storeHead('Ürün Talep Formu',r.no||'',(r.createdAt||today()).slice(0,10))}
-    <table class="pkv">${kv('Ürün',`<b>${esc(r.productName||'')}</b>`)}${kv('Ürün kodu',r.productCode?`<span style="font-family:monospace">${esc(r.productCode)}</span>`:'')}${kv('Adet',String(rqQty(r)))}
+  printHTML(`${RP_PAGE}<div class="pdoc rone">${storeHead('Ürün Talep Formu',r.no||'',(r.createdAt||today()).slice(0,10))}
+    <table class="pkv">${kv('Ürün',`<b>${esc(r.productName||'')}</b>`)}${kv('Ürün kodu',r.productCode?`<span style="font-family:monospace">${esc(r.productCode)}</span>`:'')}${kv('Barkod',r.barcode?`<span style="font-family:monospace">${esc(r.barcode)}</span>`:'')}${kv('Adet',`<b>${rqQty(r)}</b>`)}
       ${kv('Talep edilen şube',esc(r.fromBranch||''))}${kv('Talep eden şube',esc(r.toBranch||''))}${kv('Kimin için',r.purpose==='musteri'?'Müşteri':'Mağaza')}
       ${kv('Müşteri',r.purpose==='musteri'?esc([r.customerName,r.customerPhone].filter(Boolean).join(' · ')):'')}${kv('Satıcı',esc([r.requesterName,r.requesterEmail].filter(Boolean).join(' · ')))}
       ${kv('Durum',esc(REQ_MAP[r.status]?.t||''))}${kv('Öncelik',r.priority==='acil'?'<b>ACİL</b>':'Normal')}${kv('Son tarih',r.neededBy?esc(fmt(r.neededBy)):'')}${kv('Not',esc(r.note||''))}${kv('Karşılanamama nedeni',r.status==='iptal'?esc(r.cancelReason||''):'')}</table>
