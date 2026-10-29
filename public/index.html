@@ -560,6 +560,24 @@ td.nw{white-space:nowrap}
 @keyframes scanline{0%,100%{top:15%}50%{top:85%}}
 @media (prefers-reduced-motion:reduce){.scan-frame::after{animation:none}}
 .scan-msg{font-size:.86rem;color:var(--muted);margin:0}
+.shotbox{border:1.5px dashed var(--line);border-radius:12px;padding:10px 12px;margin:0 0 4px;background:var(--surface-2);transition:border-color .15s,background .15s}
+.shotbox.over{border-color:var(--accent);background:var(--accent-soft)}
+.shotbox.busy .shot-in{opacity:.6}
+.shot-in{display:flex;gap:10px;align-items:center}
+.shot-in>svg{width:26px;height:26px;flex:none;fill:none;stroke:var(--accent);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.shot-in>div{flex:1;min-width:0;display:grid;gap:1px}.shot-in b{font-size:.9rem}.shot-in span{font-size:.78rem;color:var(--muted)}
+.shot-in .btn{flex:none}
+.shot-res{margin-top:10px;display:grid;gap:8px;font-size:.84rem}
+.shot-st{margin:0;color:var(--muted)}
+.shot-ok{display:flex;gap:10px;align-items:flex-start}
+.shot-ok img{width:96px;max-height:72px;object-fit:cover;object-position:top left;border-radius:6px;border:1px solid var(--line);flex:none;background:#fff}
+.shot-kv{display:flex;flex-wrap:wrap;gap:4px 14px;min-width:0}.shot-kv span{display:grid;min-width:0}.shot-kv small{color:var(--muted);font-size:.72rem}.shot-kv b{overflow-wrap:anywhere}.shot-kv i{font-style:normal;color:var(--muted);font-weight:500;font-size:.75rem}
+.shot-miss{color:var(--warn)}
+.shot-alt{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.shot-alt small{color:var(--muted)}
+.chip-b{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:3px 10px;font:inherit;font-size:.8rem;cursor:pointer}
+.chip-b[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}.chip-b i{font-style:normal;color:var(--muted)}
+.shot-txt summary{cursor:pointer;color:var(--muted);font-size:.78rem}.shot-txt pre{white-space:pre-wrap;font-size:.75rem;max-height:160px;overflow:auto;background:var(--surface);border:1px solid var(--line-2);border-radius:8px;padding:8px;margin:6px 0 0}
+@media (max-width:640px){.shot-in span{display:none}}
 .scan-msg b{color:var(--fg)}
 .scan-wrap.lbl .scan-frame{inset:7% 5%;border-style:dashed}
 .scan-wrap.lbl .scan-frame::after{display:none}
@@ -1631,6 +1649,7 @@ button.tl-seat.empty{cursor:pointer}button.tl-seat.empty:hover:not(:disabled) .a
   <div class="dr-h"><h2 id="r-title">Yeni ürün talebi</h2><span class="no" id="r-no"></span><span id="r-pill"></span><button class="x" type="button" id="r-close" aria-label="Kapat">×</button></div>
   <form class="dr-b" id="rform-req" autocomplete="off">
     <div class="r-banner" id="r-banner"></div>
+    <div class="shotbox" id="r-shot"><div class="shot-in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 9h8M8 12h8M8 15h5"/></svg><div><b>Ekran alıntısından doldur</b><span>Stok ekranının ya da mesajın ekran alıntısını buraya yapıştırın (Ctrl+V) veya sürükleyin. Madde kodu, ürün, şube, adet ve müşteri kendiliğinden dolar.</span></div><button class="btn small" type="button" id="r-shotpick">Görüntü seç</button><input type="file" id="r-shotfile" accept="image/*" hidden></div><div class="shot-res" id="r-shotres" hidden></div></div>
     <div class="sec">
       <div class="grid">
         <div class="field"><label for="r-code">Madde kodu / barkod</label><div class="inline"><input id="r-code" required autocomplete="off" enterkeyhint="next" placeholder="Okutun veya yazın: R0042805, E409088" style="font-family:var(--f-mono);text-transform:uppercase"><button class="btn small scan" type="button" data-scan="r-code" title="Kamerayla okut" aria-label="Kamerayla okut"><svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8v8M11 8v8M14 8v8M17 8v8"/></svg></button></div></div>
@@ -3002,7 +3021,7 @@ function openReq(r){
   $('r-pm').checked=(r?.purpose||'musteri')==='musteri';$('r-ps').checked=r?.purpose==='magaza';
   $('r-title').textContent=r?(r.productName||'Ürün talebi'):'Yeni ürün talebi';$('r-no').textContent=r?r.no||'':'';
   $('r-err').textContent='';S.rDup=[];S.rDupOk=false;S._rprod=null;$('r-dup').innerHTML='';setInfo($('r-pinfo'),'','');
-  $('rscrim').hidden=false;$('rdrawer').hidden=false;
+  $('rscrim').hidden=false;$('rdrawer').hidden=false;shotReset();
   renderReqDyn();if(r)reqDupCheck();setTimeout(()=>(r?$('r-close'):$('r-code')).focus(),40);
 }
 function closeReq(){$('rdrawer').hidden=true;$('rscrim').hidden=true;S.rEditing=null}
@@ -3737,6 +3756,121 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-lblscan]')
   openScanner('Fiyat etiketini okutun',(t,shot,info)=>applyLabel(kind,bar,info),{labelFor:bar})});
 /* barkod katalogda yoksa (ya da madde kodu/adı eksikse) etiket okunmalı */
 async function needLabel(text){if(!isBarcode(text))return false;const p=await lookupProduct(text);return !(p&&p.code&&p.name)}
+
+/* ---------- ekran alıntısından talep doldurma ---------- */
+/* ekran görüntüsünü okumaya hazırla: küçük yazıyı büyüt, griye çevir, koyu temayı ters çevir */
+function shotPrep(img){const w0=img.naturalWidth||img.width,h0=img.naturalHeight||img.height;
+  const k=Math.max(1,Math.min(4,3200/w0,9000/h0));const c=document.createElement('canvas');c.width=Math.round(w0*k);c.height=Math.round(h0*k);
+  const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingQuality='high';g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
+  const d=g.getImageData(0,0,c.width,c.height),a=d.data,n=a.length/4,hist=new Uint32Array(256);let sum=0;
+  for(let i=0;i<a.length;i+=4){const y=(a[i]*.299+a[i+1]*.587+a[i+2]*.114)|0;a[i]=y;hist[y]++;sum+=y}
+  const inv=sum/n<115;
+  // Otsu eşiği: yazı ile zemini ayırır (seçili satır, renkli balon gibi açık zeminler beyaz kalır)
+  let sB=0,wB=0,best=0,th=128;for(let t=0;t<256;t++)sB+=t*hist[t];let s0=0;
+  for(let t=0;t<256;t++){wB+=hist[t];if(!wB)continue;const wF=n-wB;if(!wF)break;s0+=t*hist[t];const mB=s0/wB,mF=(sB-s0)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>best){best=v;th=t}}
+  const lut=new Uint8Array(256);for(let y=0;y<256;y++){let v=255/(1+Math.exp(-(y-th)/14));if(inv)v=255-v;lut[y]=v}
+  for(let i=0;i<a.length;i+=4){const v=lut[a[i]];a[i]=a[i+1]=a[i+2]=v}
+  g.putImageData(d,0,0);return c}
+async function readShot(img,psm){const w=await ocrWorker();const cv=shotPrep(img);
+  await w.setParameters({tessedit_pageseg_mode:String(psm||'6')});
+  try{const r=await w.recognize(cv);return String(r.data.text||'')}finally{try{await w.setParameters({tessedit_pageseg_mode:'3'})}catch(_){}}}
+const trKey=s=>String(s||'').toLocaleLowerCase('tr-TR').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ı/g,'i').replace(/\s+/g,' ').trim();
+function eanOk(b){if(!/^\d{8}$|^\d{12,13}$/.test(b))return false;const d=b.split('').map(Number);const c=d.pop();let s=0;d.reverse().forEach((x,i)=>{s+=x*(i%2?1:3)});return (10-s%10)%10===c}
+/* okunan metinden ürün kodu/barkod, ürün adı, şube, adet, müşteri ve telefonu çıkar */
+function parseShot(txt,opt){opt=opt||{};
+  const lines=String(txt||'').split(/\n+/).map(l=>l.replace(/[|_~«»“”`´]+/g,' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+  const fixD=s=>s.replace(/[OoDQ]/g,'0').replace(/[Il|]/g,'1').replace(/S/g,'5').replace(/B/g,'8').replace(/Z/g,'2').replace(/G/g,'6');
+  const home=trKey(opt.home||'');
+  const brs=[...new Set((opt.branches||[]).filter(Boolean))].map(n=>({n,k:trKey(n)})).filter(b=>b.k&&b.k!==home).sort((a,b)=>b.k.length-a.k.length);
+  const shapes=opt.shapes||{};const known=opt.known||(()=>null);
+  const cand=new Map();
+  const add=(code,i,j,kind,l,toks)=>{let sc=0;
+    if(kind==='bar')sc+=3;else{const L=(code.match(/^[A-ZÇĞİÖŞÜ]+/)||[''])[0].length,D=code.length-L;
+      if(L===1)sc+=3;if(D>=6&&D<=8)sc+=2;if(shapes[L+'-'+D])sc+=4;
+      if(j===0)sc+=4;const prev=trKey(toks[j-1]||'');if(/kod|madde|stok|urun/.test(prev))sc+=4;
+      const nb=[toks[j-1],toks[j+1]].filter(x=>x&&/^[A-Za-zÇĞİÖŞÜçğıöşü]{3,}$/.test(x)).length;if(j>0&&nb===2)sc-=4;}
+    if(known(code))sc+=10;
+    const c=cand.get(code)||{code,kind,sc:-99,n:0,i,j,at:[]};c.n++;c.at.push([i,j]);if(sc>c.sc){c.sc=sc;c.i=i;c.j=j}cand.set(code,c)};
+  lines.forEach((l,i)=>{const toks=l.split(' ');toks.forEach((tok,j)=>{const t=tok.replace(/[^A-Za-z0-9ÇĞİÖŞÜ|]/g,'');
+    const m=t.match(/^([A-Za-zÇĞİÖŞÜ])([0-9OoDQIl|SBZG]{5,9})$/)||t.match(/^([A-Za-zÇĞİÖŞÜ]{2,3})(\d[0-9OoDQIl|SBZG]{4,8})$/);
+    if(m){const d=fixD(m[2]);if(/^\d{5,9}$/.test(d)&&(m[2].match(/\d/g)||[]).length>=4&&!/^(tl|try|usd|eur)$/i.test(m[1]))add(m[1].toLocaleUpperCase('tr-TR').replace('İ','I')+d,i,j,'code',l,toks)}
+    const b=tok.replace(/[^0-9]/g,'');if(b.length>=8&&eanOk(b))add(b,i,j,'bar',l,toks)})});
+  let items=[...cand.values()].map(c=>({...c,sc:c.sc+Math.min(c.n-1,2)})).filter(c=>c.sc>=3).sort((a,b)=>b.sc-a.sc);
+  if(items.some(c=>c.kind==='code'))items=items.filter(c=>c.kind==='code'||known(c.code));
+  /* ürün adı: kodun bulunduğu satırın kalanı (tablo/etiket satırı); kod cümle içindeyse boş */
+  const bad=/(\bTL\b|\d+[.,]\d{2}\b|\bAdet\b|\bMiktar\b|\bStok\b|\bFiyat\b|\bKdv\b)/i;
+  const nameAt=(i,j)=>{if(j>1)return '';let toks=lines[i].split(' ').filter((x,k)=>k!==j);
+    for(const b of brs){const n=b.k.split(' ').length;for(let k=0;k+n<=toks.length;k++)if(trKey(toks.slice(k,k+n).join(' ').replace(/[^\p{L}\p{N} ]/gu,''))===b.k){toks.splice(k,n);k--}}
+    let s=toks.join(' ').replace(/\b\d{1,3}(?:[.,]\d{3})*[.,]\d{2}\b\s*(TL|₺)?/g,' ').replace(/\b(TL|₺)\b/g,' ').replace(/\s+/g,' ').trim();
+    s=s.replace(/(\s+\d{1,4})+\s*$/,'').replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N})"]+$/gu,'').trim();
+    const letters=(s.match(/\p{L}/gu)||[]).length;if(letters<5||bad.test(s))return '';return s.slice(0,120)};
+  const nameOf=c=>{const names=c.at.map(([i,j])=>nameAt(i,j)).filter(Boolean);if(!names.length)return '';const f={};names.forEach(n=>f[n]=(f[n]||0)+1);return Object.keys(f).sort((a,b)=>f[b]-f[a])[0]};
+  items.forEach(c=>{c.name=nameOf(c)});
+  /* şubeler: geçtiği satırdaki stok sayısıyla; stoğu olan en yüksek şube önce */
+  const found=new Map();
+  lines.forEach((l,i)=>{let N=' '+trKey(l)+' ';
+    for(const b of brs){const key=' '+b.k+' ';let p=N.indexOf(key),stock=null;
+      if(p>=0){const after=N.slice(p+key.length);N=N.slice(0,p)+' # '+N.slice(p+key.length);const m=after.match(/^(\d{1,4})(?![.,]\d)(?=\s)/);if(m)stock=Number(m[1])}
+      else if(b.k.length>=5&&N.replace(/ /g,'').includes(b.k.replace(/ /g,'')))p=0;else continue;
+      const f=found.get(b.n)||{name:b.n,stock:null,at:i};if(stock!=null&&(f.stock==null||stock>f.stock))f.stock=stock;found.set(b.n,f)}});
+  const branches=[...found.values()].sort((a,b)=>((b.stock||0)>0)-((a.stock||0)>0)||(b.stock||0)-(a.stock||0)||a.at-b.at);
+  const all=lines.join('\n');
+  let qty=null;const q=all.match(/\b(\d{1,3})\s*(adet|ad\.|tane|pcs)\b/i)||all.match(/\b(?:adet|miktar)\s*[:=]\s*(\d{1,3})\b/i);if(q)qty=Number(q[1])||null;
+  let phone='';const ph=all.replace(/[()]/g,' ').match(/(?:\+?90[\s.-]*)?0?\s*(5\d{2})[\s.-]*(\d{3})[\s.-]*(\d{2})[\s.-]*(\d{2})(?!\d)/);if(ph)phone=`0${ph[1]} ${ph[2]} ${ph[3]} ${ph[4]}`;
+  let customer='';const cu=all.match(/(?:müşteri|musteri|ad soyad|alıcı|sayın)\s*(?:adı)?\s*[:\-]?\s*([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){0,3})/i);if(cu)customer=cu[1].trim();
+  return {items,branches,qty,phone,customer,text:all}}
+/* katalogdaki kodlara bir harf/rakam farkla uyan okumayı düzelt (OCR "R0O042805" gibi fazladan karakter okuyabiliyor) */
+function lev1(a,b){if(a===b)return true;const la=a.length,lb=b.length;if(Math.abs(la-lb)>1)return false;let i=0,j=0,e=0;
+  while(i<la&&j<lb){if(a[i]===b[j]){i++;j++;continue}if(++e>1)return false;if(la>lb)i++;else if(lb>la)j++;else{i++;j++}}return e+(la-i)+(lb-j)<=1}
+function shotOpts(){const codes=S.products.map(p=>String(p.code||'').toUpperCase()).filter(Boolean);const sh={};let n=0;
+  codes.forEach(c=>{const L=(c.match(/^[A-ZÇĞİÖŞÜ]+/)||[''])[0].length;if(!L)return;sh[L+'-'+(c.length-L)]=(sh[L+'-'+(c.length-L)]||0)+1;n++});
+  const shapes={};if(n>=5){for(const k in sh)if(sh[k]/n>=.15)shapes[k]=1}else{shapes['1-6']=1;shapes['1-7']=1}
+  return {branches:[...S.branches.map(b=>b.name),...((branchInfo&&branchInfo.branches)||[])],home:(S.meUser&&S.meUser.branch)||'Ümraniye',shapes,known:c=>!!findProduct(c)}}
+function shotFix(r){if(!S.products.length)return r;const seen=new Set();
+  r.items=r.items.map(c=>{if(c.kind!=='code'||findProduct(c.code))return c;const L=(c.code.match(/^[A-ZÇĞİÖŞÜ]+/)||[''])[0];const D=c.code.slice(L.length);
+    const p=S.products.find(p=>{const k=String(p.code||'').toUpperCase();return k.startsWith(L)&&/^\d+$/.test(k.slice(L.length))&&lev1(k.slice(L.length),D)});return p?{...c,code:String(p.code).toUpperCase(),fixed:c.code}:c})
+    .filter(c=>{if(seen.has(c.code))return false;seen.add(c.code);return true});return r}
+const SHOT={tok:0,r:null};
+function shotReset(){SHOT.tok++;SHOT.r=null;const res=$('r-shotres');res.hidden=true;res.innerHTML='';$('r-shot').hidden=!!S.rEditing;$('r-shot').classList.remove('busy','over')}
+function shotLoad(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>res({im,u});im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('img'))};im.src=u})}
+async function shotFile(file){if(!file||!/^image\//.test(file.type||'image/'))return;if($('rdrawer').hidden||S.rEditing)return;
+  const tok=++SHOT.tok;const box=$('r-shot'),res=$('r-shotres');box.classList.add('busy');res.hidden=false;
+  res.innerHTML='<p class="shot-st"><b>Ekran alıntısı okunuyor…</b> İlk seferde okuma motoru indirilir (yaklaşık 3 MB), sonrakiler birkaç saniye sürer.</p>';
+  let L;try{L=await shotLoad(file)}catch(_){box.classList.remove('busy');res.innerHTML='<p class="shot-st">Görüntü açılamadı. Ekran alıntısını yeniden kopyalayıp yapıştırın.</p>';return}
+  try{let txt=await readShot(L.im,'6');let r=shotFix(parseShot(txt,shotOpts()));
+    if(!r.items.length){const t2=await readShot(L.im,'3');const r2=shotFix(parseShot(t2,shotOpts()));if(r2.items.length||r2.branches.length>r.branches.length){r=r2;txt=t2}}
+    if(tok!==SHOT.tok||$('rdrawer').hidden)return;SHOT.r=r;SHOT.img=L.u;box.classList.remove('busy');await shotApply(r,0)}
+  catch(e){if(tok!==SHOT.tok)return;box.classList.remove('busy');res.innerHTML='<p class="shot-st">Görüntü okunamadı (okuma motoru yüklenemedi). İnternet bağlantınızı kontrol edip tekrar deneyin.</p>'}}
+async function shotApply(r,idx){const it=r.items[idx];const filled=[];
+  if(it){$('r-code').value=it.code;S.rBar='';$('r-product').value='';await rCodeLookup(true);if(!$('r-product').value.trim()&&it.name)$('r-product').value=it.name;filled.push('kod')}
+  if(idx===0){if(r.qty){$('r-qty').value=r.qty;filled.push('adet')}
+    if(r.branches[0]){$('r-from').value=r.branches[0].name;filled.push('şube')}
+    if(r.customer||r.phone){$('r-pm').checked=true;$('r-ps').checked=false;if(r.customer)$('r-customer').value=r.customer;if(r.phone)$('r-cphone').value=r.phone;filled.push('müşteri')}
+    renderReqDyn()}
+  reqDupCheck();shotRender(r,idx)}
+function shotRender(r,idx){const res=$('r-shotres');const it=r.items[idx];
+  const kv=(k,v)=>v?`<span><small>${k}</small><b>${v}</b></span>`:'';
+  const pname=$('r-product').value.trim();
+  let h=`<div class="shot-ok">${SHOT.img?`<img src="${SHOT.img}" alt="Yapıştırılan ekran alıntısı">`:''}<div class="shot-kv">`;
+  h+=it?kv('Madde kodu',esc(it.code)+(it.fixed?` <i title="Okunan: ${esc(it.fixed)}">(katalogla düzeltildi)</i>`:''))+kv('Ürün',esc(pname)):`<span class="shot-miss">Ürün kodu bulunamadı; kodu elle yazın ya da okutun.</span>`;
+  h+=kv('Şube',esc($('r-from').value))+kv('Adet',r.qty?String(r.qty):'')+kv('Müşteri',esc([r.customer,r.phone].filter(Boolean).join(' · ')));
+  h+=`</div></div><p class="hint" style="margin:0">Okunanlar forma yazıldı, göndermeden önce kontrol edin.</p>`;
+  if(r.items.length>1)h+=`<div class="shot-alt"><small>Görüntüde başka ürün de var:</small>${r.items.map((c,i)=>i===idx?'':`<button type="button" class="chip-b" data-shotit="${i}">${esc(c.code)}${c.name?' · '+esc(c.name.slice(0,40)):''}</button>`).join('')}</div>`;
+  if(r.branches.length>1)h+=`<div class="shot-alt"><small>Şube seçin:</small>${r.branches.map(b=>`<button type="button" class="chip-b" data-shotbr="${esc(b.name)}" aria-pressed="${$('r-from').value===b.name}">${esc(b.name)}${b.stock!=null?` <i>${b.stock} stok</i>`:''}</button>`).join('')}</div>`;
+  h+=`<details class="shot-txt"><summary>Okunan metin</summary><pre>${esc(r.text)}</pre></details>`;
+  res.innerHTML=h;res.hidden=false}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-shotit]');if(a&&SHOT.r){shotApply(SHOT.r,Number(a.dataset.shotit));return}
+  const b=e.target.closest('[data-shotbr]');if(b&&SHOT.r){$('r-from').value=b.dataset.shotbr;shotRender(SHOT.r,SHOT.r.items.findIndex(c=>c.code===$('r-code').value.trim().toUpperCase())>=0?SHOT.r.items.findIndex(c=>c.code===$('r-code').value.trim().toUpperCase()):0);return}
+  if(e.target.closest('#r-shotpick'))$('r-shotfile').click()});
+$('r-shotfile').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(f)shotFile(f)});
+/* yapıştırma: talep formu açıkken ya da Ürün Talepleri sayfasındayken Ctrl+V ile ekran alıntısı */
+document.addEventListener('paste',e=>{const it=[...((e.clipboardData&&e.clipboardData.items)||[])].find(i=>i.kind==='file'&&/^image\//.test(i.type));if(!it)return;
+  const f=it.getAsFile();if(!f)return;
+  if(!$('rdrawer').hidden){if(S.rEditing)return;e.preventDefault();shotFile(f);return}
+  if(S.view==='talepler'&&S.canWrite&&$('drawer').hidden&&$('scan-modal').hidden){e.preventDefault();openReq(null);setTimeout(()=>shotFile(f),60)}});
+['dragenter','dragover'].forEach(t=>$('rdrawer').addEventListener(t,e=>{if(S.rEditing||![...(e.dataTransfer&&e.dataTransfer.types||[])].includes('Files'))return;e.preventDefault();$('r-shot').classList.add('over')}));
+$('rdrawer').addEventListener('dragleave',e=>{if(!$('rdrawer').contains(e.relatedTarget))$('r-shot').classList.remove('over')});
+$('rdrawer').addEventListener('drop',e=>{const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];$('r-shot').classList.remove('over');if(!f||!/^image\//.test(f.type)||S.rEditing)return;e.preventDefault();shotFile(f)});
 
 /* ================= kamerayla okutma ================= */
 let SC=null,zxP=null,zwP=null,ZWC=null,SHC=null;
