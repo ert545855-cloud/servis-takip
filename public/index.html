@@ -3773,14 +3773,19 @@ async function needLabel(text){if(!isBarcode(text))return false;const p=await lo
 /* ---------- ekran alıntısından / ekran fotoğrafından talep doldurma ---------- */
 /* ekran alıntısı (PNG): küçük yazıyı büyüt, griye çevir, koyu temayı ters çevir, yumuşak eşikle keskinleştir */
 function shotPrep(img){const w0=img.naturalWidth||img.width,h0=img.naturalHeight||img.height;
-  const k=Math.max(1,Math.min(4,3200/w0,9000/h0));const c=document.createElement('canvas');c.width=Math.round(w0*k);c.height=Math.round(h0*k);
-  const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingQuality='high';g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);
-  const d=g.getImageData(0,0,c.width,c.height),a=d.data,n=a.length/4,hist=new Uint32Array(256);let sum=0;
-  for(let i=0;i<a.length;i+=4){const y=(a[i]*.299+a[i+1]*.587+a[i+2]*.114)|0;a[i]=y;hist[y]++;sum+=y}
+  const k=Math.max(1,Math.min(4,3200/w0,9000/h0));const W=Math.round(w0*k),H=Math.round(h0*k);const c=document.createElement('canvas');c.width=W;c.height=H;c._k=k;
+  const g=c.getContext('2d',{willReadFrequently:true});g.imageSmoothingQuality='high';g.fillStyle='#fff';g.fillRect(0,0,W,H);g.drawImage(img,0,0,W,H);
+  const d=g.getImageData(0,0,W,H),a=d.data,n=W*H,hist=new Uint32Array(256),Y=new Uint8Array(n);let sum=0;
+  // en koyu kanal: mavi bağlantılı yazılar (ürün kodları) da siyah gibi çıkar
+  for(let p=0,i=0;p<n;p++,i+=4){const y=Math.min(a[i],a[i+1],a[i+2]);Y[p]=y;hist[y]++;sum+=y}
   const inv=sum/n<115;let sB=0,wB=0,best=0,th=128;for(let t=0;t<256;t++)sB+=t*hist[t];let s0=0;
   for(let t=0;t<256;t++){wB+=hist[t];if(!wB)continue;const wF=n-wB;if(!wF)break;s0+=t*hist[t];const mB=s0/wB,mF=(sB-s0)/wF,v=wB*wF*(mB-mF)*(mB-mF);if(v>best){best=v;th=t}}
+  // uzun yatay/dikey çizgiler: tablo çizgileri ve bağlantı alt çizgileri (yazıya yapışıp harfleri bozuyor)
+  const ink=p=>inv?Y[p]>th:Y[p]<th;const kill=new Uint8Array(n);const L=Math.round(W/25),LV=Math.round(H/8);
+  for(let y=0;y<H;y++){let run=0;for(let x=0;x<=W;x++){if(x<W&&ink(y*W+x)){run++;continue}if(run>=L)for(let q=x-run;q<x;q++)kill[y*W+q]=1;run=0}}
+  for(let x=0;x<W;x++){let run=0;for(let y=0;y<=H;y++){if(y<H&&ink(y*W+x)){run++;continue}if(run>=LV)for(let q=y-run;q<y;q++)kill[q*W+x]=1;run=0}}
   const lut=new Uint8Array(256);for(let y=0;y<256;y++){let v=255/(1+Math.exp(-(y-th)/14));if(inv)v=255-v;lut[y]=v}
-  for(let i=0;i<a.length;i+=4){const v=lut[a[i]];a[i]=a[i+1]=a[i+2]=v}
+  for(let p=0,i=0;p<n;p++,i+=4){const v=kill[p]?255:lut[Y[p]];a[i]=a[i+1]=a[i+2]=v}
   g.putImageData(d,0,0);return c}
 /* ekranın telefonla çekilmiş fotoğrafı: eğikliği düzelt, en koyu kanal (mavi bağlantılar da koyu çıkar), hafif bulanıklık (moare), yerel eşik, tablo/alt çizgileri sil */
 function photoPrep(img,opt){opt=opt||{};const w0=img.naturalWidth||img.width,h0=img.naturalHeight||img.height;
@@ -3810,7 +3815,7 @@ function skewAngle(img){const c=photoPrep(img,{tw:900,k:1,lines:false,blur:1});c
 function ocrWords(r){const out=[];(r.data.blocks||[]).forEach(b=>(b.paragraphs||[]).forEach(p=>(p.lines||[]).forEach(l=>(l.words||[]).forEach(w=>{const t=String(w.text||'').trim();if(t)out.push({t,x0:w.bbox.x0,y0:w.bbox.y0,x1:w.bbox.x1,y1:w.bbox.y1,c:w.confidence})}))));return out}
 /* görüntüyü oku: ekran alıntısı ya da fotoğraf; sözcükler konumlarıyla döner */
 async function readShot(img,mode){const w=await ocrWorker();let cv,psm;
-  if(mode==='photo'){cv=photoPrep(img,{ang:skewAngle(img)});psm='11'}else{cv=shotPrep(img);psm='6'}
+  if(mode==='photo'){cv=photoPrep(img,{ang:skewAngle(img)});psm='11'}else{cv=shotPrep(img);psm=mode==='screen6'?'6':'3'}
   await w.setParameters({tessedit_pageseg_mode:psm});
   let words;try{const r=await w.recognize(cv);words=ocrWords(r)}finally{try{await w.setParameters({tessedit_pageseg_mode:'3'})}catch(_){}}
   return {words,cv}}
@@ -3832,7 +3837,7 @@ function codeOf(t){const s=t.replace(/[^A-Za-z0-9ÇĞİÖŞÜ|]/g,'');
 function parseShot(words,opt){opt=opt||{};words=words.filter(w=>w.t&&w.x1>w.x0);
   const h=median(words.map(w=>w.y1-w.y0))||20;const lines=wordLines(words,h);const text=lines.map(l=>l.text).join('\n');
   const home=trKey(opt.home||'');const brs=[...new Set((opt.branches||[]).filter(Boolean))].map(n=>({n,k:trKey(n)})).filter(b=>b.k&&b.k!==home).sort((a,b)=>b.k.length-a.k.length);
-  const shapes=opt.shapes||{},known=opt.known||(()=>false);
+  const shapes=opt.shapes||{},known=opt.known||(()=>false);const allBr=[...brs.map(b=>b.k),home].filter(Boolean);
   const lineOf=w=>lines.find(l=>l.ws.includes(w));
   const cands=[];
   const shapeFix=c=>codeFix(c,shapes);
@@ -3866,19 +3871,22 @@ function parseShot(words,opt){opt=opt||{};words=words.filter(w=>w.t&&w.x1>w.x0);
     const band=lines.filter(l=>l.yc>=top&&l.yc<bot);let nameX=null;
     band.forEach(l=>l.ws.forEach(w=>{if(w!==c.w&&w.x0>rx1-h*.3&&!isNum(w.t)&&(nameX==null||w.x0<nameX))nameX=w.x0}));
     let qty=null;const parts=[];
+    const hasBr=band.some(l=>{const N=' '+trKey(l.text)+' ';return allBr.some(k=>N.includes(' '+k+' '))});
     band.forEach(l=>{const ws=l.ws.filter(w=>w!==c.w&&w.x0>=rx1-h*.3);const seg=[];
-      for(const w of ws){if(nameX!=null&&w.x0<nameX-h*3&&!seg.length)continue;if(seg.length&&w.x0-seg[seg.length-1].x1>h*2.2)break;if(!seg.length&&isNum(w.t)&&w.x0<(nameX??0))continue;seg.push(w)}
+      for(const w of ws){if(nameX!=null&&w.x0<nameX-h*3&&!seg.length)continue;if(seg.length&&w.x0-seg[seg.length-1].x1>h*2.2)break;if(!seg.length&&isNum(w.t)&&w.x0<(nameX??0)-h*.8)continue;seg.push(w)}
       for(const b of brs){const n=b.k.split(' ').length;for(let k=0;k+n<=seg.length;k++)if(isBr(seg.slice(k,k+n))){seg.splice(k,n);k--}}
-      if(seg.length&&seg.some(w=>/\p{L}{2,}/u.test(w.t)))parts.push(seg.map(w=>w.t).join(' '));
+      if(seg.length&&(seg.some(w=>/\p{L}{2,}/u.test(w.t))||(parts.length&&seg.some(w=>/\p{L}/u.test(w.t)))))parts.push(seg.map(w=>w.t).join(' '));
       for(const w of l.ws){const m=w.t.match(/^(\d{1,3}),0{2,3}$/);if(m&&w.x0>rx1&&!/TL|₺/.test(l.text.slice(l.text.indexOf(w.t)+w.t.length,l.text.indexOf(w.t)+w.t.length+4)))qty=Number(m[1])}});
     let name=parts.join(' ').replace(/^[^\p{L}\p{N}(]+/u,'').replace(/\s{2,}/g,' ').trim();
     if((name.match(/\p{L}/gu)||[]).length<4||/:\s*$|^\p{L}+:$/u.test(name)||CHATW.test(trKey(name)))name='';
     if(c.kind==='none'&&!name)return;
-    const prev=c.code&&seen.get(c.code);if(prev){if(name)prev.names.push(name.slice(0,140));if(qty&&!prev.qty)prev.qty=qty;prev.n++;return}
-    const it={code:c.code,kind:c.kind,names:name?[name.slice(0,140)]:[],qty:qty&&qty<1000?qty:null,sc:c.sc,n:1,box:{x0:ref.x0,y0:c.yc-(ref.y1-ref.y0)/2,x1:ref.x1,y1:c.yc+(ref.y1-ref.y0)/2}};
+    const prev=c.code&&seen.get(c.code);if(prev){if(name)prev.names.push(name.slice(0,140));prev.qs.push(qty);prev.br=prev.br||hasBr;prev.n++;return}
+    const it={code:c.code,kind:c.kind,names:name?[name.slice(0,140)]:[],qs:[qty],br:hasBr,qty:qty&&qty<1000?qty:null,sc:c.sc,n:1,box:{x0:ref.x0,y0:c.yc-(ref.y1-ref.y0)/2,x1:ref.x1,y1:c.yc+(ref.y1-ref.y0)/2}};
     if(c.code)seen.set(c.code,it);items.push(it)});
   // aynı kod birden çok satırda geçiyorsa en sık okunan ad
-  items.forEach(it=>{const f={};it.names.forEach(n=>f[n]=(f[n]||0)+1);it.name=Object.keys(f).sort((a,b)=>f[b]-f[a]||a.length-b.length)[0]||'';delete it.names});
+  items.forEach(it=>{const f={};it.names.forEach(n=>f[n]=(f[n]||0)+1);it.name=Object.keys(f).sort((a,b)=>f[b]-f[a]||a.length-b.length)[0]||'';delete it.names;
+    // sipariş ekranında aynı ürün birden çok satırdaysa adetler toplanır (şubeli stok listesinde toplanmaz)
+    if(it.n>1&&!it.br){const t=it.qs.reduce((a,q)=>a+(q||1),0);if(t<1000)it.qty=t}delete it.qs});
   /* şubeler: geçtiği satırdaki stok sayısıyla; stoğu olan en yüksek şube önce */
   const found=new Map();
   lines.forEach((l,i)=>{let N=' '+trKey(l.text)+' ';
@@ -3889,9 +3897,29 @@ function parseShot(words,opt){opt=opt||{};words=words.filter(w=>w.t&&w.x1>w.x0);
   const branches=[...found.values()].sort((a,b)=>((b.stock||0)>0)-((a.stock||0)>0)||(b.stock||0)-(a.stock||0)||a.at-b.at);
   let qty=null;const q=text.match(/\b(\d{1,3})\s*(adet|ad\.|tane|pcs)\b/i)||text.match(/\b(?:adet|miktar)\s*[:=]\s*(\d{1,3})\b/i);if(q)qty=Number(q[1])||null;
   let phone='';const ph=text.replace(/[()]/g,' ').match(/(?:\+?90[\s.-]*)?0?\s*(5\d{2})[\s.-]*(\d{3})[\s.-]*(\d{2})[\s.-]*(\d{2})(?!\d)/);if(ph)phone=`0${ph[1]} ${ph[2]} ${ph[3]} ${ph[4]}`;
-  let customer='';const cu=text.match(/(?:[Mm]üşteri|[Mm]usteri|MÜŞTERİ|[Aa]d[ıi]?\s*[Ss]oyad[ıi]?|AD\s*SOYAD[Iİ]?|[Aa]lıcı|[Ss]ayın)\s*(?:[Aa]dı)?\s*[:\-]?\s*((?:[A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]+)(?:\s+[A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]+){0,3})/);
+  let customer='';const cu=text.match(/(?:[Mm]üşteri|[Mm]usteri|MÜŞTERİ|[Aa]d[ıi]?[\s\-–]*[Ss]oyad[ıi]?|AD[\s\-–]*SOYAD[Iİ]?|[Aa]lıcı|[Ss]ayın)\s*(?:[Aa]dı)?\s*[:\-]?[ \t]*((?:[A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]+)(?:[ \t]+[A-ZÇĞİÖŞÜ][A-Za-zÇĞİÖŞÜçğıöşü]+){0,3})/);
   if(cu)customer=cu[1].trim().split(/\s+/).map(x=>x===x.toLocaleUpperCase('tr-TR')?x.charAt(0)+x.slice(1).toLocaleLowerCase('tr-TR'):x).join(' ');
   return {items,branches,qty,phone,customer,text,h}}
+/* ekran alıntısında kodlar küçük ve altı çizili olabiliyor: her kodun alanını özgün görüntüden 6 kat büyütüp tek satır olarak yeniden oku */
+async function rereadScreen(img,cv,res,shapes){const k=cv._k||1;const its=res.items.filter(it=>it.box&&it.kind==='code');if(!its.length)return res;shapes=shapes||{};
+  const IW=img.naturalWidth||img.width,IH=img.naturalHeight||img.height;const okShape=c=>{const L=(c.match(/^[A-ZÇĞİÖŞÜ]+/)||[''])[0].length;return !!shapes[L+'-'+(c.length-L)]};
+  const read=async(b,Z,px)=>{const sx=Math.max(0,b.x0/k-px),sy=Math.max(0,b.y0/k-4),sw=Math.min(IW,b.x1/k+px)-sx,sh=Math.min(IH,b.y1/k+4)-sy;if(sw<4||sh<4)return null;
+    const c=document.createElement('canvas');c.width=Math.round(sw*Z)+40;c.height=Math.round(sh*Z)+40;const g=c.getContext('2d',{willReadFrequently:true});g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.imageSmoothingQuality='high';g.drawImage(img,sx,sy,sw,sh,20,20,sw*Z,sh*Z);
+    const d=g.getImageData(0,0,c.width,c.height),a=d.data;let mn=255,mx=0;for(let i=0;i<a.length;i+=4){const y=Math.min(a[i],a[i+1],a[i+2]);a[i]=y;if(y<mn)mn=y;if(y>mx)mx=y}
+    const inv=(()=>{let s=0;for(let i=0;i<a.length;i+=4)s+=a[i];return s/(a.length/4)<(mn+mx)/2})();const th=(mn+mx)/2;
+    for(let i=0;i<a.length;i+=4){let v=a[i]<th?0:255;if(inv)v=255-v;a[i]=a[i+1]=a[i+2]=v}
+    const W=c.width,H=c.height;for(let y=0;y<H;y++){let run=0;for(let x=0;x<=W;x++){const i=(y*W+x)*4;if(x<W&&a[i]===0){run++;continue}if(run>W*.45)for(let q=x-run;q<x;q++){const j=(y*W+q)*4;a[j]=a[j+1]=a[j+2]=255}run=0}}
+    g.putImageData(d,0,0);const t=String((await w.recognize(c)).data.text||'').replace(/\s+/g,'');const m=t.match(/[A-ZÇĞİÖŞÜ]{1,3}[0-9O]{5,9}/);const cc=m&&codeFix(codeOf(m[0]),shapes);return cc&&cc.kind==='code'?cc.code:null};
+  const w=await ocrWorker();await w.setParameters({tessedit_pageseg_mode:'7',tessedit_char_whitelist:'ABCDEFGHIJKLMNOPRSTUVYZ0123456789'});
+  try{for(const it of its){const reads=[await read(it.box,6,8),await read(it.box,8,8),await read(it.box,4,8)];
+      // oylama: biçimi uyan okumalar; eşitlikte büyütülmüş okuma öne geçer
+      const votes=new Map();const add=(c,wt)=>{if(c&&okShape(c))votes.set(c,(votes.get(c)||0)+wt)};add(reads[0],1.1);add(reads[1],1);add(reads[2],1);add(it.code,1.05);
+      let best=null,bv=0;for(const [c,v] of votes)if(v>bv){bv=v;best=c}
+      if(best&&best!==it.code){it.alt=it.code;it.code=best;it.doubt=bv<2}
+      else if(best===it.code&&bv<2&&reads.some(r=>r&&r!==it.code)){it.doubt=true;it.alt=reads.find(r=>r&&r!==it.code)}}}
+  finally{try{await w.setParameters({tessedit_pageseg_mode:'3',tessedit_char_whitelist:''})}catch(_){}}
+  const seen=new Map();res.items=res.items.filter(it=>{if(!it.code)return true;const p=seen.get(it.code);if(p){if(!p.br&&!it.br)p.qty=(p.qty||p.n||1)+(it.qty||it.n||1);p.n=(p.n||1)+(it.n||1);return false}seen.set(it.code,it);return true});
+  return res}
 /* fotoğrafta kodu okunamayan satırlar: kod sütunundaki alanı tek sözcük olarak yeniden oku */
 function codeFix(c,shapes){if(!c||c.kind!=='code')return c;const L=(c.code.match(/^[A-ZÇĞİÖŞÜ]+/)||[''])[0].length,D=c.code.length-L;
   if(L===2&&!shapes['2-'+D]&&shapes['1-'+(D+1)]&&/[OQDAUÖC]/.test(c.code[1]))return {...c,code:c.code[0]+'0'+c.code.slice(2)};return c}
@@ -3931,7 +3959,7 @@ function multiExit(){S.rMulti=null;const m=$('r-multi');m.hidden=true;m.innerHTM
 function shotReset(){SHOT.tok++;SHOT.r=null;const res=$('r-shotres');res.hidden=true;res.innerHTML='';$('r-shot').hidden=!!S.rEditing;$('r-shot').classList.remove('busy','over');multiExit()}
 function shotLoad(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>res({im,u});im.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('img'))};im.src=u})}
 async function shotRun(im,mode,st){const o=await readShot(im,mode);let r=parseShot(o.words,shotOpts());
-  if(mode==='photo'&&r.items.length){st('Kodlar ikinci kez kontrol ediliyor…');r=await rereadMissing(o.cv,r,shotOpts().shapes)}return r}
+  if(r.items.length){st('Kodlar ikinci kez kontrol ediliyor…');r=mode==='photo'?await rereadMissing(o.cv,r,shotOpts().shapes):await rereadScreen(im,o.cv,r,shotOpts().shapes)}return r}
 async function shotFile(file){if(!file||!/^image\//.test(file.type||'image/'))return;if($('rdrawer').hidden||S.rEditing)return;
   const tok=++SHOT.tok;const box=$('r-shot'),res=$('r-shotres');box.classList.add('busy');res.hidden=false;multiExit();
   const st=t=>{if(tok===SHOT.tok)res.innerHTML=`<p class="shot-st"><b>${t}</b> İlk seferde okuma motoru indirilir (yaklaşık 3 MB).</p>`};
