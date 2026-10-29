@@ -54,7 +54,9 @@ const FILE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif'
 const MAX_FILE = 15 * 1024 * 1024;
 const SESSION_DAYS = 30;
 const ROLES = new Set(['admin', 'user', 'satici', 'viewer']);
-const ACTIVE_T = new Set(['teslim_alindi', 'servise_gonderildi', 'serviste', 'servisten_geldi', 'musteriye_teslim', 'fatura_talep', 'acik', 'islemde', 'parca']);
+// arıza durumları (4 sütun): teslim_alindi → faturalandi → serviste → musteriye_teslim (Teslim Edildi).
+// Servisten gelen ürün müşteri alana kadar "serviste" kalır, servisten geliş tarihi (backAt) dolu olur.
+const ACTIVE_T = new Set(['teslim_alindi', 'faturalandi', 'serviste', 'acik', 'islemde', 'parca']);
 const REQ_LABEL = { yeni: 'Yeni talep', talep_edildi: 'Talep edildi', yolda: 'Yolda', geldi: 'Şubeye geldi', tamamlandi: 'Tamamlandı', iptal: 'Karşılanamadı / iptal' };
 const SELLER_FIELDS = new Set(['productName', 'productCode', 'barcode', 'qty', 'fromBranch', 'purpose', 'customerName', 'customerPhone', 'note', 'neededBy', 'priority', 'updatedAt', 'log', 'comments', 'status']);
 
@@ -181,6 +183,7 @@ async function migrate() {
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
   await homeBranchMigrate();
   await labelMigrate();
+  await ticketStatusMigrate();
   await branchSeed();
   await purgeTrash();
   await chat.migrate();
@@ -241,6 +244,26 @@ async function homeBranchMigrate() {
     await pool.query("INSERT INTO meta (key, value) VALUES ('home_branch_v1', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify({ branch: hb, users: u.rowCount, requests: r.rowCount, at: new Date().toISOString() })]);
     console.log(`Şube düzeltmesi: ${u.rowCount} kullanıcı ve ${r.rowCount} talep "${hb}" şubesine alındı`);
   } catch (e) { console.error('Şube düzeltmesi yapılamadı:', e.message); }
+}
+/* bir kerelik: arıza durumları 8 sütundan 4 sütuna (eski durum statusBefore alanında saklanır).
+   Eski "faturalandı" iş bitmiş demekti (müşteriye teslimden sonra); yeni düzende Faturalandı servise göndermeden önceki adım. */
+const ST_MAP_V2 = { servise_gonderildi: 'serviste', servisten_geldi: 'serviste', islemde: 'serviste', parca: 'serviste', acik: 'teslim_alindi', fatura_talep: 'musteriye_teslim', faturalandi: 'musteriye_teslim', kapandi: 'musteriye_teslim' };
+async function ticketStatusMigrate() {
+  try {
+    if ((await pool.query("SELECT 1 FROM meta WHERE key = 'ticket_status_v2'")).rows.length) return;
+    const today = istNow().date; let n = 0;
+    for (const table of ['docs', 'trash']) {
+      const { rows } = await pool.query(`SELECT id, data FROM ${table} WHERE coll = 'tickets' AND data->>'status' = ANY($1::text[])`, [Object.keys(ST_MAP_V2)]);
+      for (const r of rows) {
+        const d = r.data; const patch = { status: ST_MAP_V2[d.status], statusBefore: d.status };
+        if (d.status === 'servisten_geldi' && !d.backAt) patch.backAt = String(d.updatedAt || today).slice(0, 10);
+        if (patch.status === 'musteriye_teslim' && !d.deliveredAt) patch.deliveredAt = String(d.invoicedAt || d.updatedAt || today).slice(0, 10);
+        await pool.query(`UPDATE ${table} SET data = data || $2::jsonb WHERE coll = 'tickets' AND id = $1`, [r.id, JSON.stringify(patch)]); n++;
+      }
+    }
+    await pool.query("INSERT INTO meta (key, value) VALUES ('ticket_status_v2', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify({ tickets: n, at: new Date().toISOString() })]);
+    console.log(`Arıza durumları 4 sütuna taşındı: ${n} kayıt`);
+  } catch (e) { console.error('Arıza durumları taşınamadı:', e.message); }
 }
 /* bir kerelik: "Yönetici" yazan adlar "Sevkiyat" olur (kullanıcı adı ve kayıtlardaki geçmiş yazıları) */
 async function labelMigrate() {
@@ -403,13 +426,13 @@ async function maybeDailyReport(force) {
     const act = tickets.filter(t => ACTIVE_T.has(t.status));
     const late = act.filter(t => t.dueAt && t.dueAt < now.date), today = act.filter(t => t.dueAt === now.date);
     const soon = act.filter(t => t.dueAt && dayDiff(now.date, t.dueAt) >= 1 && dayDiff(now.date, t.dueAt) <= 2);
-    const waiting = act.filter(t => t.status === 'servisten_geldi' && t.backAt && dayDiff(t.backAt, now.date) >= (Number(st.waitDays) || 3));
+    const waiting = act.filter(t => t.status === 'serviste' && t.backAt && dayDiff(t.backAt, now.date) >= (Number(st.waitDays) || 3));
     const newReq = reqs.filter(r => r.status === 'yeni');
-    const notify = act.filter(t => t.status === 'servisten_geldi' && !(t.sms || []).some(x => x.stage === 'servisten_geldi'));
+    const notify = act.filter(t => t.status === 'serviste' && t.backAt && !(t.sms || []).some(x => x.stage === 'servisten_geldi'));
     const warnCal = Math.ceil((Number(st.serviceWarnDays) || 15) * 7 / 5);
-    const longSvc = act.filter(t => ['servise_gonderildi', 'serviste'].includes(t.status) && t.sentAt && dayDiff(t.sentAt, now.date) >= warnCal);
+    const longSvc = act.filter(t => t.status === 'serviste' && !t.backAt && t.sentAt && dayDiff(t.sentAt, now.date) >= warnCal);
     const loans = tickets.filter(t => t.loaner && t.loaner.name && !t.loaner.backAt);
-    const exch = tickets.filter(t => ['degisim', 'iade'].includes(t.serviceResult) && t.exchange && !t.exchange.doneAt && !['kapandi'].includes(t.status));
+    const exch = tickets.filter(t => ['degisim', 'iade'].includes(t.serviceResult) && t.exchange && !t.exchange.doneAt);
     if (!force) {
       const parts = [late.length && `${late.length} gecikmiş`, waiting.length && `${waiting.length} mağazada bekleyen`, notify.length && `${notify.length} müşteriye haber verilecek`, longSvc.length && `${longSvc.length} serviste uzun kalan`, loans.length && `${loans.length} ödünç ürün dışarıda`, newReq.length && `${newReq.length} yeni talep`].filter(Boolean);
       if (parts.length) pushStaff({ title: 'Günaydın · bugünün hatırlatmaları', body: parts.join(' · '), url: (APP_URL || '') + '/#pano', tag: 'daily' }, '', { urgency: 'normal', ttl: 6 * 3600 });
@@ -784,7 +807,7 @@ async function writeDoc(req, res, mode) {
   }
   if (coll === 'tickets') onTicketChange(old, doc, req.user, req).catch(e => console.warn(e.message));
   if (coll === 'requests' && !old && (doc.dupOf || []).length) pushStaff({ title: 'Mükerrer olabilecek talep', body: `${doc.customerName || ''} · ${doc.productName || ''} için zaten talep var: ${doc.dupOf.join(', ')}`, url: `${baseUrl(req)}/#talepler`, tag: 'dup-' + id }, req.user.id);
-  if (coll === 'tickets' && old && old.status !== doc.status && doc.status === 'servisten_geldi')
+  if (coll === 'tickets' && old && doc.status === 'serviste' && doc.backAt && !old.backAt)
     pushStaff({ title: 'Ürün servisten geldi', body: `${doc.no} · ${doc.customerName || ''} · ${doc.productName || ''}`, url: `${baseUrl(req)}/?k=${id}`, tag: 'tk-' + id }, req.user.id);
 }
 const jsonBody = express.json({ limit: '1mb' });
@@ -957,7 +980,7 @@ app.post('/api/import/tickets', express.json({ limit: '8mb' }), wrap(auth), (req
 }));
 
 /* yedekleme */
-const BK_STATUS = { teslim_alindi: 'Teslim Alındı', servise_gonderildi: 'Servise Gönderildi', serviste: 'Serviste', servisten_geldi: 'Servisten Geldi', musteriye_teslim: 'Müşteriye Teslim', fatura_talep: 'Fatura Talebi', faturalandi: 'Faturalandı', kapandi: 'Kapandı', acik: 'Teslim Alındı', islemde: 'Serviste', parca: 'Serviste' };
+const BK_STATUS = { teslim_alindi: 'Teslim Alındı', faturalandi: 'Faturalandı', serviste: 'Serviste', musteriye_teslim: 'Teslim Edildi', servise_gonderildi: 'Serviste', servisten_geldi: 'Serviste', fatura_talep: 'Teslim Edildi', kapandi: 'Teslim Edildi', acik: 'Teslim Alındı', islemde: 'Serviste', parca: 'Serviste' };
 async function buildBackup() {
   const [docs, users] = await Promise.all([
     pool.query('SELECT coll, id, data FROM docs ORDER BY coll, id'),
@@ -1150,7 +1173,13 @@ async function ticketByToken(token) {
   return rows[0] ? { id: rows[0].id, ...rows[0].data } : null;
 }
 const STEPS = [['teslim_alindi', 'Ürün teslim alındı', 'openedAt'], ['servise_gonderildi', 'Servise gönderildi', 'sentAt'], ['serviste', 'Serviste', null], ['servisten_geldi', 'Servisten geldi, teslim alabilirsiniz', 'backAt'], ['musteriye_teslim', 'Müşteriye teslim edildi', 'deliveredAt']];
-const ORDER = { teslim_alindi: 0, acik: 0, servise_gonderildi: 1, serviste: 2, islemde: 2, parca: 2, servisten_geldi: 3, musteriye_teslim: 4, fatura_talep: 4, faturalandi: 4, kapandi: 4 };
+/* müşteri takip sayfasındaki adım: faturalandı ürün henüz mağazada; serviste + geliş tarihi = servisten geldi */
+function pubIdx(t) {
+  const s = t.status;
+  if (s === 'musteriye_teslim' || s === 'fatura_talep' || s === 'kapandi') return 4;
+  if (s === 'serviste' || s === 'islemde' || s === 'parca' || s === 'servise_gonderildi' || s === 'servisten_geldi') return t.backAt || s === 'servisten_geldi' ? 3 : 2;
+  return 0;
+}
 const RESULT = { tamir_edildi: 'Onarıldı', degisim: 'Değişim yapıldı', iade: 'İade', tamir_edilemez: 'Onarılamadı', ucretli: 'Ücretli onarım' };
 app.get('/takip/:token', wrap(async (req, res) => {
   const t = await ticketByToken(req.params.token);
@@ -1159,7 +1188,7 @@ app.get('/takip/:token', wrap(async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Robots-Tag', 'noindex');
   if (!t) return res.status(404).send(publicPage(store, '<h1>Kayıt bulunamadı</h1><p>Bağlantı hatalı ya da kayıt kaldırılmış olabilir. Lütfen mağazamızla iletişime geçin.</p>', st));
-  const idx = ORDER[t.status] ?? 0;
+  const idx = pubIdx(t);
   const first = String(t.customerName || '').split(' ')[0];
   const steps = STEPS.map(([k, label, f], i) => `<li class="${i < idx ? 'done' : i === idx ? 'cur' : ''}"><b>${esc(label)}</b>${f && t[f] ? `<span>${esc(trDate(t[f]))}</span>` : ''}</li>`).join('');
   const q = t.quote || {};
@@ -1198,7 +1227,7 @@ app.post('/takip/:token/puan', express.urlencoded({ extended: false, limit: '4kb
   if (limited('rate:' + req.ip, 20, 60 * 60e3)) return res.status(429).send('Çok fazla istek');
   const t = await ticketByToken(req.params.token);
   const score = Math.round(Number(req.body.puan));
-  if (!t || t.rating || !(score >= 1 && score <= 5) || (ORDER[t.status] ?? 0) < 4) return res.redirect(`/takip/${encodeURIComponent(req.params.token)}`);
+  if (!t || t.rating || !(score >= 1 && score <= 5) || pubIdx(t) < 4) return res.redirect(`/takip/${encodeURIComponent(req.params.token)}`);
   const comment = String(req.body.yorum || '').trim().slice(0, 500);
   const now = new Date();
   const { id, ...rest } = t;

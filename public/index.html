@@ -170,7 +170,7 @@ h1,h2,h3,h4{text-wrap:balance}
 .toolbar h1{font-family:var(--f-display);font-weight:800;font-size:1.35rem;margin:0 6px 0 0}
 .toolbar .search{flex:1 1 220px;max-width:340px}
 .toolbar .sp{flex:1}
-.board{flex:1;min-height:0;display:grid;grid-template-columns:repeat(8,minmax(236px,1fr));gap:12px;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scroll-snap-type:x proximity}
+.board{flex:1;min-height:0;display:grid;grid-template-columns:repeat(4,minmax(260px,1fr));gap:12px;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scroll-snap-type:x proximity}
 .col{background:var(--surface-2);border:1px solid var(--line-2);border-radius:12px;display:flex;flex-direction:column;min-height:0;scroll-snap-align:start;min-width:0}
 .col.over{border-color:var(--accent);background:var(--accent-soft)}
 .col-h{padding:12px 12px 9px;display:flex;flex-direction:column;gap:1px;border-bottom:1px solid var(--line-2)}
@@ -183,7 +183,7 @@ h1,h2,h3,h4{text-wrap:balance}
 .col-b{padding:10px;display:flex;flex-direction:column;gap:9px;flex:1;overflow-y:auto;min-height:0}
 .col-more{display:block;width:100%;margin-top:4px;padding:9px;border:1.5px dashed var(--line);border-radius:9px;background:none;color:var(--accent);font-weight:700;font-size:.82rem;cursor:pointer}.col-more:hover{background:var(--accent-soft)}
 .col-empty{color:var(--faint);font-size:.82rem;text-align:center;padding:18px 6px;border:1.5px dashed var(--line);border-radius:9px}
-@media (max-width:860px){.board{grid-template-columns:repeat(8,minmax(82vw,1fr))}}
+@media (max-width:860px){.board{grid-template-columns:repeat(4,minmax(82vw,1fr))}}
 
 .card{background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:10px 11px 9px 13px;box-shadow:var(--shadow);cursor:pointer;position:relative;display:flex;flex-direction:column;gap:5px;min-width:0;flex:none}
 .card::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--line)}
@@ -212,7 +212,10 @@ h1,h2,h3,h4{text-wrap:balance}
 .s-ok .sla em{color:var(--ok)} .s-warn .sla em{color:var(--warn)} .s-bad .sla em{color:var(--bad)} .s-done .sla em{color:var(--st-faturalandi)}
 .card-f{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--faint);font-variant-numeric:tabular-nums;border-top:1px dashed var(--line-2);padding-top:6px;margin-top:2px}
 .card-f .amt{color:var(--fg);font-weight:600}
-.card-f .mv{margin-left:auto;border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:2px 8px;font-size:.74rem;font-weight:600;color:var(--accent);cursor:pointer}
+.card-f{flex-wrap:wrap}.card-f>span{white-space:nowrap}
+.card-f .mv{margin-left:auto;white-space:nowrap;border:1px solid var(--line);background:var(--surface-2);border-radius:6px;padding:2px 8px;font-size:.74rem;font-weight:600;color:var(--accent);cursor:pointer}
+.card-f .mv+.mv{margin-left:0}
+.card-f .mv[data-tback]{color:var(--st-serviste)}
 .card-f .mv:hover{border-color:var(--accent)}
 
 .empty-hero{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
@@ -1809,19 +1812,18 @@ button.tl-seat.empty{cursor:pointer}button.tl-seat.empty:hover:not(:disabled) .a
 <script>
 (function(){
 /* ================= constants & state ================= */
+/* arıza panosu: 4 sütun. Servisten gelen ürün, müşteri alana kadar "Serviste" sütununda kalır (servisten geliş tarihi dolu) */
 const ST=[
   {k:'teslim_alindi',t:'Teslim Alındı',d:'Müşteriden alındı, mağazada'},
-  {k:'servise_gonderildi',t:'Servise Gönderildi',d:'Kargoda / servise yolda'},
-  {k:'serviste',t:'Serviste',d:'Servis inceliyor / onarımda'},
-  {k:'servisten_geldi',t:'Servisten Geldi',d:'Mağazada, müşteriye haber verilecek'},
-  {k:'musteriye_teslim',t:'Müşteriye Teslim',d:'Müşteri ürünü aldı'},
-  {k:'fatura_talep',t:'Fatura Talebi',d:'Fatura kesilmesi bekleniyor'},
-  {k:'faturalandi',t:'Faturalandı',d:'Fatura çıktı'},
-  {k:'kapandi',t:'Kapandı',d:'Tamamlandı / iptal'}
+  {k:'faturalandi',t:'Faturalandı',d:'Faturası kesildi, servise gönderilecek'},
+  {k:'serviste',t:'Serviste',d:'Serviste ya da servisten geldi, müşteriyi bekliyor'},
+  {k:'musteriye_teslim',t:'Teslim Edildi',d:'Müşteri ürünü aldı'}
 ];
 const STMAP=Object.fromEntries(ST.map(s=>[s.k,s]));
-const ACTIVE=ST.map(s=>s.k).filter(k=>k!=='faturalandi'&&k!=='kapandi');
-const LEGACY={acik:'teslim_alindi',islemde:'serviste',parca:'serviste'};
+const ACTIVE=['teslim_alindi','faturalandi','serviste'];
+const LEGACY={acik:'teslim_alindi',islemde:'serviste',parca:'serviste',servise_gonderildi:'serviste',servisten_geldi:'serviste',fatura_talep:'musteriye_teslim',kapandi:'musteriye_teslim'};
+const isBack=t=>t.status==='serviste'&&!!t.backAt;   // servisten geldi, mağazada bekliyor
+const atSvc=t=>t.status==='serviste'&&!t.backAt;     // hâlâ serviste
 function fixT(t){return t&&LEGACY[t.status]?{...t,status:LEGACY[t.status]}:t}
 const CARRIERS=[
   {k:'yurtici',name:'Yurtiçi Kargo',url:n=>'https://www.yurticikargo.com/tr/online-servisler/gonderi-sorgula?code='+n},
@@ -1907,9 +1909,9 @@ function computeDue(opened,catId){const biz=!!S.settings.businessDays;const days
 function unit(biz){return biz?'iş günü':'gün'}
 function sla(t){
   const biz=t.slaBusiness??S.settings.businessDays;const u=unit(biz);const due=t.dueAt;
-  if(t.status==='faturalandi'||t.status==='kapandi'){
-    if(t.invoicedAt&&due){const late=between(due,t.invoicedAt,biz);return {cls:'s-done',lc:late>0?'bad':'done',txt:late>0?late+' '+u+' geç faturalandı':'Süresinde faturalandı',pct:100,left:null,late:late>0}}
-    return {cls:'s-done',lc:'done',txt:t.status==='kapandi'?'Kapandı':'Faturalandı',pct:100,left:null};
+  if(t.status==='musteriye_teslim'){const end=t.deliveredAt||t.invoicedAt;
+    if(end&&due){const late=between(due,end,biz);return {cls:'s-done',lc:late>0?'bad':'done',txt:late>0?late+' '+u+' geç teslim edildi':'Süresinde teslim edildi',pct:100,left:null,late:late>0}}
+    return {cls:'s-done',lc:'done',txt:'Teslim edildi',pct:100,left:null};
   }
   const t0=today();const total=t.slaDays||slaDaysFor(t.categoryId);
   const used=Math.min(100,Math.max(4,between(t.openedAt||t0,t0,biz)/total*100));
@@ -1924,12 +1926,12 @@ function sla(t){
 function svcInfo(t){if(!t.sentAt)return null;const end=t.backAt||today();return {days:Math.max(0,between(t.sentAt,end,true)),done:!!t.backAt}}
 function legalInfo(t){if(t.warranty!=='garantili'||!(t.openedAt||t.sentAt))return null;const start=[t.openedAt,t.sentAt].filter(Boolean).sort()[0];const end=t.backAt||t.deliveredAt||today();return {days:Math.max(0,between(start,end,true)),limit:20,done:!!(t.backAt||t.deliveredAt)}}
 function svcCls(n){const w=Number(S.settings.serviceWarnDays)||15;return n>20?'bad':n>=w?'warn':''}
-function isLong(t){if(!['servise_gonderildi','serviste'].includes(t.status))return false;const a=svcInfo(t),L=legalInfo(t),w=Number(S.settings.serviceWarnDays)||15;return !!((a&&a.days>=w)||(L&&L.days>=w))}
+function isLong(t){if(!atSvc(t))return false;const a=svcInfo(t),L=legalInfo(t),w=Number(S.settings.serviceWarnDays)||15;return !!((a&&a.days>=w)||(L&&L.days>=w))}
 function trackUrl(t){return location.origin+'/takip/'+t.publicToken}
-function needsPickup(t){return t.status==='servisten_geldi'&&t.backAt&&diff(t.backAt,today())>=(Number(S.settings.waitDays)||3)}
+function needsPickup(t){return isBack(t)&&diff(t.backAt,today())>=(Number(S.settings.waitDays)||3)}
 function loanOut(t){return !!(t.loaner&&t.loaner.name&&!t.loaner.backAt)}
 async function ensureToken(t){if(!t||t.publicToken||!S.canWrite)return t;const tok=genId();try{await S.db.doc('tickets/'+t.id).update({publicToken:tok})}catch(_){}return {...t,publicToken:tok}}
-function needsNotify(t){return t.status==='servisten_geldi'&&!(t.sms||[]).some(x=>x.stage==='servisten_geldi')}
+function needsNotify(t){return isBack(t)&&!(t.sms||[]).some(x=>x.stage==='servisten_geldi')}
 function tplText(stage){const m=S.settings.smsTpl||{};return (m[stage]!=null&&String(m[stage]).trim()!=='')?m[stage]:(DEF_TPL[stage]||'')}
 function fillTpl(txt,t){const c=CARRIER_MAP[t.carrier];const v={musteri:t.customerName||'',urun:t.productName||'',kayitno:t.no||'',magaza:S.settings.storeName||'',telefon:S.settings.storePhone||'',kargo:c?c.name:'',takipno:t.trackNo||'',servis:t.firmName||'',takiplink:t.publicToken?trackUrl(t):'',tutar:t.quote&&t.quote.amount?money(t.quote.amount):'',gun:t.backAt?String(Math.max(0,diff(t.backAt,today()))):'',odunc:(t.loaner&&t.loaner.name)||'ödünç'};
   return String(txt||'').replace(/\{(\w+)\}/g,(m,k)=>k in v?v[k]:m).replace(/[ \t]{2,}/g,' ').replace(/ +([.,!?])/g,'$1').trim()}
@@ -2039,10 +2041,11 @@ function cardHTML(t){
     <h4>${esc(t.customerName||'—')}</h4>
     <p class="prod">${esc(t.productName||'')}${t.productCode?`<span class="pc">${esc(t.productCode)}</span>`:''}${t.firmName?' · '+esc(t.firmName):''}</p>
     ${t.desc?`<p class="desc">${esc(t.desc)}</p>`:''}
-    ${(()=>{const a=svcInfo(t),L=legalInfo(t);const inSvc=['servise_gonderildi','serviste'].includes(t.status);const bits=[];
+    ${(()=>{const a=svcInfo(t),L=legalInfo(t);const inSvc=atSvc(t);const bits=[];
       if(inSvc&&a)bits.push(`<span class="${svcCls(Math.max(a.days,L?L.days:0))}">${ICON.box}Serviste ${a.days} iş günü${L?' · yasal '+L.days+'/20':''}</span>`);
       else if(inSvc&&L)bits.push(`<span class="${svcCls(L.days)}">Yasal süre ${L.days}/20 iş günü</span>`);
-      if(t.status==='servise_gonderildi'&&t.trackNo)bits.push(`<span>${esc((CARRIER_MAP[t.carrier]||{}).name||'Kargo')}: ${esc(t.trackNo)}</span>`);
+      if(isBack(t)&&!needsNotify(t)&&!needsPickup(t))bits.push(`<span class="okt">Servisten geldi · ${esc(fmtS(t.backAt))}</span>`);
+      if(inSvc&&t.trackNo)bits.push(`<span>${esc((CARRIER_MAP[t.carrier]||{}).name||'Kargo')}: ${esc(t.trackNo)}</span>`);
       if(t.svcNo&&inSvc)bits.push(`<span>İş emri ${esc(t.svcNo)}</span>`);
       if(needsNotify(t))bits.push(`<span class="warn">Müşteriye haber verilmedi</span>`);
       if(needsPickup(t))bits.push(`<span class="warn">${diff(t.backAt,today())} gündür mağazada bekliyor</span>`);
@@ -2055,8 +2058,8 @@ function cardHTML(t){
       return bits.length?`<div class="meta">${bits.join('')}</div>`:''})()}
     ${(t.tech||parts.length||files||cm)?`<div class="meta">${t.tech?`<span>${ICON.user}${esc(t.tech)}</span>`:''}${parts.length?`<span title="Parçalar">${ICON.box}${waiting?waiting+' bekleniyor':'parçalar geldi'}</span>`:''}${files?`<span title="Ekler">${ICON.clip}${files}</span>`:''}${cm?`<span title="Yorumlar">${ICON.chat}${cm}</span>`:''}</div>`:''}
     <div class="sla"><div class="bar"><i style="width:${s.pct}%"></i></div><em>${esc(s.txt)}</em></div>
-    <div class="card-f"><span title="Kayıt tarihi → fatura son tarihi">${fmtS(t.openedAt)} → ${fmtS(t.dueAt)}</span>${t.invoiceAmount?`<span class="amt">${esc(money(t.invoiceAmount))}</span>`:''}
-    ${next&&S.canWrite&&!pick?`<button class="mv" type="button" data-move="${next.k}" title="${esc(next.t)} sütununa taşı">${esc(next.t)} →</button>`:''}</div>
+    <div class="card-f"><span title="Kayıt tarihi → teslim son tarihi">${fmtS(t.openedAt)} → ${fmtS(t.dueAt)}</span>${t.invoiceAmount?`<span class="amt">${esc(money(t.invoiceAmount))}</span>`:''}
+    ${atSvc(t)&&S.canWrite&&!pick?`<button class="mv" type="button" data-tback="1" title="Servisten geliş tarihini bugün olarak işaretle">Servisten geldi</button>`:''}${next&&S.canWrite&&!pick?`<button class="mv" type="button" data-move="${next.k}" title="${esc(next.t)} sütununa taşı">${esc(next.t)} →</button>`:''}</div>
   </article>`;
 }
 function boardToolbar(c){
@@ -2089,7 +2092,7 @@ function renderBoard(c){
   const list=filtered();
   let msg='';
   if(S.db&&!S.loaded.tickets)msg='<div class="banner">Kayıtlar yükleniyor…</div>';
-  else if(S.loaded.tickets&&!S.tickets.length)msg=`<div class="empty-hero"><div><h2>Henüz arıza kaydı yok</h2><p>İlk kaydı açınca 8 sütunlu panoda görünür ve fatura için süre sayacı başlar. Firma, müşteri ve ürün adları kayıt açarken otomatik eklenir; kategori sürelerini ve tatil günlerini Tanımlar ve Ayarlar sayfasından yönetebilirsiniz.</p></div>${S.canWrite&&S.db?'<button class="btn primary" type="button" data-act="new">+ İlk arıza kaydını aç</button>':''}</div>`;
+  else if(S.loaded.tickets&&!S.tickets.length)msg=`<div class="empty-hero"><div><h2>Henüz arıza kaydı yok</h2><p>İlk kaydı açınca 4 sütunlu panoda görünür ve teslim için süre sayacı başlar. Firma, müşteri ve ürün adları kayıt açarken otomatik eklenir; kategori sürelerini ve tatil günlerini Tanımlar ve Ayarlar sayfasından yönetebilirsiniz.</p></div>${S.canWrite&&S.db?'<button class="btn primary" type="button" data-act="new">+ İlk arıza kaydını aç</button>':''}</div>`;
   $('board-msg').innerHTML=msg;
   let html='';
   for(const st of ST){
@@ -2198,7 +2201,7 @@ function hbars(rows,fmtV){const max=Math.max(1,...rows.map(r=>r.v));return `<div
 function renderRep(){
   const R=repRange();const all=S.tickets;
   const opened=all.filter(t=>inR(t.openedAt,R));
-  const inv=all.filter(t=>inR(t.invoicedAt,R)&&(t.status==='faturalandi'||t.status==='kapandi'||t.invoicedAt));
+  const inv=all.filter(t=>inR(t.invoicedAt,R)&&t.invoicedAt);
   const sum=inv.reduce((a,t)=>a+(Number(t.invoiceAmount)||0),0);
   const onTime=inv.filter(t=>t.dueAt&&t.invoicedAt<=t.dueAt).length;
   const rate=inv.length?Math.round(onTime/inv.length*100):null;
@@ -2299,7 +2302,7 @@ function renderDefs(){
         <p class="hint" style="margin:0">Satıcılara giden e-postalar: kayıt doğrulama ve onay, şifre sıfırlama, talebin “Talep Edildi”, “Yolda”, “Şubeye Geldi” ve “Karşılanamadı” durumları.</p>
       </form>
     </section>
-    ${defPanel('categories','Kategoriler','Her kategori için ayrı fatura süresi girebilirsiniz; boş bırakılırsa varsayılan süre geçerli olur.','<input class="inp" name="name" id="d-cat-name" placeholder="Örn. Züccaciye, Mobilya" required><input class="inp" name="slaDays" id="d-cat-sla" type="number" min="1" max="60" placeholder="Süre (isteğe bağlı)" style="flex:0 1 150px">',cats,()=>'')}
+    ${defPanel('categories','Kategoriler','Her kategori için ayrı teslim süresi girebilirsiniz; boş bırakılırsa varsayılan süre geçerli olur.','<input class="inp" name="name" id="d-cat-name" placeholder="Örn. Züccaciye, Mobilya" required><input class="inp" name="slaDays" id="d-cat-sla" type="number" min="1" max="60" placeholder="Süre (isteğe bağlı)" style="flex:0 1 150px">',cats,()=>'')}
     ${defPanel('firms','Servis firmaları / markalar','Ürünleri gönderdiğiniz servisler. Telefon ve e-posta “Servise durum sor” mesajında kullanılır.','<input class="inp" name="name" id="d-firm-name" placeholder="Firma adı" required><input class="inp" name="phone" id="d-firm-phone" placeholder="Telefon / WhatsApp"><input class="inp" name="email" id="d-firm-email" type="email" placeholder="E-posta">',firms,it=>(it.phone||it.email)?`<div class="sub">${esc([it.phone,it.email].filter(Boolean).join(' · '))}</div>`:'')}
     ${defPanel('branches','Şubeler','Satıcılar kayıt olurken ve ürün talebi açarken bu listeden seçer.','<input class="inp" name="name" id="d-br-name" placeholder="Şube adı, ör. Ümraniye Merkez" required><input class="inp" name="phone" id="d-br-phone" placeholder="Telefon">',[...S.branches].sort(byName).map(x=>({...x,_used:S.requests.filter(r=>r.fromBranch===x.name||r.toBranch===x.name).length})),it=>it.phone?`<div class="sub">${esc(it.phone)}</div>`:'')}
     ${productsPanel(catName,firmName,firmOpts)}
@@ -2354,19 +2357,18 @@ async function ensure(coll,name,extra){
 function logEntry(text){return {at:stamp(),text,by:S.me||null}}
 function movePatch(t,status){
   const patch={status,updatedAt:iso()};
-  if(status==='fatura_talep'&&!t.invoiceRequestedAt)patch.invoiceRequestedAt=today();
   if(status==='faturalandi'&&!t.invoicedAt)patch.invoicedAt=today();
-  if(status==='servise_gonderildi'&&!t.sentAt)patch.sentAt=today();
-  if(status==='servisten_geldi'&&!t.backAt)patch.backAt=today();
+  if(status==='serviste'&&!t.sentAt)patch.sentAt=today();
   if(status==='musteriye_teslim'&&!t.deliveredAt)patch.deliveredAt=today();
   patch.log=[...(t.log||[]),logEntry('Durum: '+STMAP[status].t)].slice(-80);return patch}
+/* serviste olan ürün geri geldi: servisten geliş tarihi bugün, kart "Serviste" sütununda müşteriyi bekler */
+async function markBack(id){const t=S.tickets.find(x=>x.id===id);if(!t||t.backAt||S.busy.has(id))return;
+  S.busy.add(id);try{await S.db.doc('tickets/'+id).update({backAt:today(),updatedAt:iso(),log:[...(t.log||[]),logEntry('Servisten geldi')].slice(-80)});toast('Servisten geldi olarak işaretlendi · müşteriye haber verin')}catch(err){toast(errMsg(err))}finally{S.busy.delete(id)}}
 async function moveTicket(id,status){
   const t=S.tickets.find(x=>x.id===id);if(!t||t.status===status||S.busy.has(id))return;
   const patch={status,updatedAt:iso()};
-  if(status==='fatura_talep'&&!t.invoiceRequestedAt)patch.invoiceRequestedAt=today();
   if(status==='faturalandi'&&!t.invoicedAt)patch.invoicedAt=today();
-  if(status==='servise_gonderildi'&&!t.sentAt)patch.sentAt=today();
-  if(status==='servisten_geldi'&&!t.backAt)patch.backAt=today();
+  if(status==='serviste'&&!t.sentAt)patch.sentAt=today();
   if(status==='musteriye_teslim'&&!t.deliveredAt)patch.deliveredAt=today();
   patch.log=[...(t.log||[]),logEntry('Durum: '+STMAP[status].t)].slice(-80);
   S.busy.add(id);
@@ -2405,7 +2407,7 @@ function openDrawer(t,preset){
   set('f-code',t?(t.productCode||t.barcode||''):'');S._tdup=null;$('d-save').textContent='Kaydet';
   {const x=t?.exchange||{};set('x-repno',x.reportNo);set('x-repat',x.reportAt);set('x-retat',x.returnedAt);set('x-retref',x.returnRef);set('x-newat',x.newArrivedAt);set('x-newserial',x.newSerial);set('x-delat',x.deliveredAt);set('x-refat',x.refundAt);set('x-refamt',x.refundAmount);set('x-credat',x.creditAt);set('x-credno',x.creditNo)}
   $('d-actions').hidden=!t;
-  const st0=t?.status;set('f-smstpl',t&&needsPickup(t)&&!needsNotify(t)?'hatirlatma':t&&t.quote&&t.quote.status==='bekliyor'?'teklif':DEF_TPL[st0]?st0:'servisten_geldi');smsFill();
+  const st0=t?.status;set('f-smstpl',t&&needsPickup(t)&&!needsNotify(t)?'hatirlatma':t&&t.quote&&t.quote.status==='bekliyor'?'teklif':st0==='serviste'?(t.backAt?'servisten_geldi':'servise_gonderildi'):st0==='faturalandi'?'teslim_alindi':DEF_TPL[st0]?st0:'servisten_geldi');smsFill();
   if(t&&!t.publicToken&&S.canWrite)ensureToken(t).then(x=>{if(S.editing&&S.editing.id===x.id){S.editing={...S.editing,publicToken:x.publicToken};if($('f-smstpl').value!=='ozel')smsFill()}});
   $('d-err').textContent='';
   const del=$('d-del');del.hidden=!t||!S.canWrite;del.classList.remove('armed');del.textContent='Kaydı sil';
@@ -2497,8 +2499,8 @@ function renderDrawerDyn(){
 $('d-close').onclick=closeDrawer;$('d-cancel').onclick=closeDrawer;$('scrim').onclick=closeDrawer;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(!$('lightbox').hidden){$('lightbox').hidden=true;return}if(!$('drawer').hidden)closeDrawer()}});
 ['f-opened','f-status','f-invdate','f-cat'].forEach(id=>$(id).addEventListener('input',renderDrawerDyn));
-$('f-status').addEventListener('change',()=>{const s=$('f-status').value;if(s==='faturalandi'&&!$('f-invdate').value)$('f-invdate').value=today();if(s==='fatura_talep'&&!$('f-invreq').value)$('f-invreq').value=today();
-  if(s==='servise_gonderildi'&&!$('f-sent').value)$('f-sent').value=today();if(s==='servisten_geldi'&&!$('f-back').value)$('f-back').value=today();if(s==='musteriye_teslim'&&!$('f-delivered').value)$('f-delivered').value=today();
+$('f-status').addEventListener('change',()=>{const s=$('f-status').value;if(s==='faturalandi'&&!$('f-invdate').value)$('f-invdate').value=today();
+  if(s==='serviste'&&!$('f-sent').value)$('f-sent').value=today();if(s==='musteriye_teslim'&&!$('f-delivered').value)$('f-delivered').value=today();
   if(DEF_TPL[s]){$('f-smstpl').value=s;smsFill()}renderDrawerDyn()});
 ['f-sent','f-back','f-delivered','f-war','f-qstatus','f-loan','f-loanback','f-result','f-phone','x-repno','x-repat','x-retat','x-newat','x-delat','x-refat','x-credat'].forEach(id=>$(id).addEventListener('input',renderDrawerDyn));
 $('f-qstatus').addEventListener('change',()=>{if($('f-qstatus').value==='bekliyor'){$('f-smstpl').value='teklif';smsFill()}});
@@ -2604,10 +2606,8 @@ $('tform').addEventListener('submit',async e=>{
     if(f.loaner.name&&!f.loaner.givenAt)f.loaner.givenAt=today();
     if(['degisim','iade'].includes(f.serviceResult)){const xo=formExch();const info=exInfo({serviceResult:f.serviceResult,exchange:xo});xo.doneAt=info&&info.done?((old&&old.exchange&&old.exchange.doneAt)||today()):null;f.exchange=xo}
     else if(old&&old.exchange)f.exchange=old.exchange;
-    if(status==='servise_gonderildi'&&!f.sentAt)f.sentAt=today();
-    if(status==='servisten_geldi'&&!f.backAt)f.backAt=today();
+    if(status==='serviste'&&!f.sentAt)f.sentAt=today();
     if(status==='musteriye_teslim'&&!f.deliveredAt)f.deliveredAt=today();
-    if(status==='fatura_talep'&&!f.invoiceRequestedAt)f.invoiceRequestedAt=today();
     if(status==='faturalandi'&&!f.invoicedAt)f.invoicedAt=today();
     if(old){
       const log=[...(old.log||[])];const n0=log.length;
@@ -2678,6 +2678,7 @@ document.addEventListener('click',e=>{
     return}
   const q=e.target.closest('[data-quick]');if(q){S.quick=S.quick===q.dataset.quick?'':q.dataset.quick;schedule();return}
   const mv=e.target.closest('[data-move]');if(mv){e.stopPropagation();moveTicket(mv.closest('.card').dataset.id,mv.dataset.move);return}
+  const tb=e.target.closest('[data-tback]');if(tb){e.stopPropagation();markBack(tb.closest('.card').dataset.id);return}
   const card=e.target.closest('.card');if(card){if(S.bulk){const id=card.dataset.id;S.bulk.has(id)?S.bulk.delete(id):S.bulk.add(id);schedule();return}openDrawer(S.tickets.find(t=>t.id===card.dataset.id));return}
   const row=e.target.closest('tr.click[data-id]');if(row){openDrawer(S.tickets.find(t=>t.id===row.dataset.id));return}
   const j=e.target.closest('[data-jump]');if(j){const g=document.getElementById(j.dataset.jump);if(g)g.scrollIntoView({behavior:'smooth',block:'start'});else toast('Bu günde son tarihi dolan kayıt yok');return}
@@ -3163,7 +3164,7 @@ function downloadBlob(blob,name){const url=URL.createObjectURL(blob);const a=doc
 /* ================= Sevkiyatlar (toplu sevk) ================= */
 function renderShip(){
   const d=S.shipDraft;const t0=today();
-  const cand=S.tickets.filter(t=>t.status==='teslim_alindi');
+  const cand=S.tickets.filter(t=>t.status==='teslim_alindi'||t.status==='faturalandi');
   const firms=[...new Set(cand.map(t=>t.firmName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'tr'));
   const co='<option value="">Seçin</option>'+CARRIERS.map(c=>`<option value="${c.k}" ${d&&d.carrier===c.k?'selected':''}>${esc(c.name)}</option>`).join('');
   let builder='';
@@ -3198,7 +3199,7 @@ document.addEventListener('click',async e=>{
       const firmNames=[...new Set(ts.map(t=>t.firmName))];
       const sh={no:'SVK-'+today().slice(2).replace(/-/g,'')+'-'+id.slice(-4).toUpperCase(),firmName:firmNames.length===1?firmNames[0]:'',carrier:d.carrier,trackNo:d.track,date:d.date,note:d.note,ticketIds:ts.map(t=>t.id),createdBy:S.me,createdAt:iso()};
       await S.db.doc('shipments/'+id).set(sh);
-      for(const t of ts){await S.db.doc('tickets/'+t.id).update({status:'servise_gonderildi',sentAt:t.sentAt||d.date,carrier:d.carrier,trackNo:d.track||t.trackNo||'',shipmentId:id,updatedAt:iso(),log:[...(t.log||[]),logEntry('Toplu sevk ile servise gönderildi: '+sh.no)].slice(-80)})}
+      for(const t of ts){await S.db.doc('tickets/'+t.id).update({status:'serviste',sentAt:t.sentAt||d.date,carrier:d.carrier,trackNo:d.track||t.trackNo||'',shipmentId:id,updatedAt:iso(),log:[...(t.log||[]),logEntry('Toplu sevk ile servise gönderildi: '+sh.no)].slice(-80)})}
       S.shipDraft=null;toast(sh.no+' oluşturuldu · '+ts.length+' ürün');schedule();printShipment({id,...sh});
     }catch(err){toast(errMsg(err));a.disabled=false}return}
   const pr=e.target.closest('[data-shprint]');if(pr){const sh=S.shipments.find(x=>x.id===pr.dataset.shprint);if(sh)printShipment(sh);return}
@@ -3463,7 +3464,7 @@ const IMP_FIELDS=[
   {k:'note',l:'Not',a:['not','notlar','açıklama 2']}
 ];
 const IMP_DATES=new Set(['openedAt','purchaseDate','sentAt','backAt','deliveredAt','invoicedAt']);
-const IMP_STATUS={'teslim alındı':'teslim_alindi','açık':'teslim_alindi','yeni':'teslim_alindi','servise gönderildi':'servise_gonderildi','kargoda':'servise_gonderildi','yolda':'servise_gonderildi','serviste':'serviste','işlemde':'serviste','parça bekliyor':'serviste','servisten geldi':'servisten_geldi','hazır':'servisten_geldi','müşteriye teslim':'musteriye_teslim','teslim edildi':'musteriye_teslim','fatura talebi':'fatura_talep','faturalandı':'faturalandi','kapandı':'kapandi','iptal':'kapandi','tamamlandı':'kapandi'};
+const IMP_STATUS={'teslim alındı':'teslim_alindi','açık':'teslim_alindi','yeni':'teslim_alindi','faturalandı':'faturalandi','fatura kesildi':'faturalandi','servise gönderildi':'serviste','kargoda':'serviste','yolda':'serviste','serviste':'serviste','işlemde':'serviste','parça bekliyor':'serviste','servisten geldi':'serviste','hazır':'serviste','müşteriye teslim':'musteriye_teslim','teslim edildi':'musteriye_teslim','fatura talebi':'musteriye_teslim','kapandı':'musteriye_teslim','iptal':'musteriye_teslim','tamamlandı':'musteriye_teslim'};
 function pDate(v){if(v==null||v==='')return null;if(v instanceof Date&&!isNaN(v))return ymd(new Date(v.getTime()+12*3600e3));
   if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return d.toISOString().slice(0,10)}
   const s2=String(v).trim();let m=s2.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/);if(m){let y=Number(m[3]);if(y<100)y+=2000;return `${y}-${pad(m[2])}-${pad(m[1])}`}
@@ -3475,7 +3476,7 @@ function impRow(raw,map){const g=k=>map[k]?raw[map[k]]:'';const str=k=>String(g(
   if(/^5\d{9}$/.test(r.customerPhone))r.customerPhone='0'+r.customerPhone;
   const amt=String(r.invoiceAmount||'').replace(/[^\d,.-]/g,'');r.invoiceAmount=amt?Number(amt.includes(',')?amt.replace(/\./g,'').replace(',','.'):amt):null;if(isNaN(r.invoiceAmount))r.invoiceAmount=null;
   const ws=norm(r.warranty);r.warranty=/garantili|evet|var|kapsamında/.test(ws)?'garantili':/ücretli|ucretli|yok|hayır|dışı/.test(ws)?'ucretli':'';
-  const st=IMP_STATUS[norm(r.status)];r.status=st||(r.invoicedAt?'faturalandi':r.deliveredAt?'musteriye_teslim':r.backAt?'servisten_geldi':r.sentAt?'servise_gonderildi':'teslim_alindi');
+  const st=IMP_STATUS[norm(r.status)];r.status=st||(r.deliveredAt?'musteriye_teslim':r.backAt||r.sentAt?'serviste':r.invoicedAt?'faturalandi':'teslim_alindi');
   const cat=S.categories.find(c=>norm(c.name)===norm(r.categoryName));Object.assign(r,computeDue(r.openedAt,cat&&cat.id));
   if(r.purchaseDate){r.warrantyEnd=wEnd(r.purchaseDate,'');if(!r.warranty)r.warranty=r.warrantyEnd>=r.openedAt?'garantili':'ucretli'}
   r.priority='normal';if(!r.no)delete r.no;return r}
@@ -3963,7 +3964,7 @@ document.addEventListener('click',async e=>{
   if(act==='bk-all'){filtered().forEach(t=>S.bulk.add(t.id));schedule()}
   else if(act==='bk-xlsx')exportXlsx(selTickets(),'secili-'+today());
   else if(act==='bk-msg'){const l=selTickets();if(!l.length)return;const st=l[0].status;openMQ(l,l.every(t=>t.status===st)&&DEF_TPL[st]?st:'hatirlatma')}
-  else if(act==='bk-ship'){const ids=selTickets().filter(t=>t.status==='teslim_alindi').map(t=>t.id);if(!ids.length){toast('Seçili kayıtlardan “Teslim Alındı” durumunda olan yok');return}
+  else if(act==='bk-ship'){const ids=selTickets().filter(t=>t.status==='teslim_alindi'||t.status==='faturalandi').map(t=>t.id);if(!ids.length){toast('Seçili kayıtlardan “Teslim Alındı” ya da “Faturalandı” durumunda olan yok');return}
     const skip=S.bulk.size-ids.length;S.shipDraft={firm:'',carrier:'',track:'',date:today(),note:'',ids};S.bulk=null;location.hash='sevkiyat';toast(ids.length+' ürün sevk listesine eklendi'+(skip?` (${skip} kayıt teslim alındı durumunda değil)`:''))}
   else if(act==='bk-assign'){const name=$('bk-as').value.trim();if(!name){$('bk-as').focus();return}const u=userByName(name);a.disabled=true;let n=0;
     try{for(const t of selTickets()){await S.db.doc('tickets/'+t.id).update({tech:u?u.name:name,assigneeId:u?u.id:null,updatedAt:iso(),log:[...(t.log||[]),logEntry('Sorumlu: '+(u?u.name:name))].slice(-80)});n++}toast(n+' kayıt '+(u?u.name:name)+' kişisine atandı'+(u&&u.id!==S.me?' · telefonuna bildirim gitti':''));$('bk-as').value=''}catch(err){toast(errMsg(err))}finally{a.disabled=false}}
@@ -3991,9 +3992,9 @@ function remindGroups(){
   add('bekleyen','Mağazada bekliyor',`Servisten geleli ${wd} gün veya daha fazla oldu, müşteri almadı.`,act.filter(t=>needsPickup(t)&&!needsNotify(t)),'hatirlatma',t=>{const l=lastSmsAt(t,'hatirlatma');return diff(t.backAt,t0)+' gündür mağazada'+(l?' · son hatırlatma '+l.slice(0,10).split('-').reverse().join('.'):' · hiç hatırlatılmadı')});
   add('uzun','Serviste uzun kalan',`${sw} iş günü veya daha uzun süredir serviste. Servise durum sorun.`,act.filter(isLong),'ask',t=>{const a=svcInfo(t);return [t.firmName,a?'serviste '+a.days+' iş günü':'',t.lastAskAt?'son soru '+fmtS(t.lastAskAt):'henüz sorulmadı'].filter(Boolean).join(' · ')});
   add('onay','Onarım onayı bekleniyor','Müşteri onarım bedelini henüz onaylamadı.',act.filter(t=>t.quote&&t.quote.status==='bekliyor'),'teklif',t=>money(t.quote.amount)+(lastSmsAt(t,'teklif')?' · mesaj gönderildi':' · mesaj gönderilmedi'));
-  add('odunc','Ödünç ürün müşteride','Müşteri ürününü aldı ama ödünç ürünü geri getirmedi, ya da 15 günü geçti.',S.tickets.filter(t=>loanOut(t)&&(t.deliveredAt||['musteriye_teslim','fatura_talep','faturalandi','kapandi'].includes(t.status)||(t.loaner.givenAt&&diff(t.loaner.givenAt,t0)>=15))),'odunc',t=>t.loaner.name+(t.loaner.givenAt?' · '+diff(t.loaner.givenAt,t0)+' gündür müşteride':''));
+  add('odunc','Ödünç ürün müşteride','Müşteri ürününü aldı ama ödünç ürünü geri getirmedi, ya da 15 günü geçti.',S.tickets.filter(t=>loanOut(t)&&(t.deliveredAt||t.status==='musteriye_teslim'||(t.loaner.givenAt&&diff(t.loaner.givenAt,t0)>=15))),'odunc',t=>t.loaner.name+(t.loaner.givenAt?' · '+diff(t.loaner.givenAt,t0)+' gündür müşteride':''));
   add('parca','Geciken parça','Beklenen tarihi geçtiği halde gelmeyen parçalar.',act.filter(t=>(t.parts||[]).some(p=>!p.arrived&&p.expectedAt&&p.expectedAt<t0)),'open',t=>(t.parts||[]).filter(p=>!p.arrived&&p.expectedAt&&p.expectedAt<t0).map(p=>p.name+' ('+fmtS(p.expectedAt)+')').join(', '));
-  add('exch','Değişim / iade süreci açık','Servis değişim veya iade kararı verdi, adımlar tamamlanmadı.',S.tickets.filter(t=>{const x=exInfo(t);return x&&!x.done&&t.status!=='kapandi'}),'open',t=>{const x=exInfo(t);return (t.serviceResult==='iade'?'İade':'Değişim')+' · sıradaki adım: '+((x.steps.find(s=>!s[1])||[''])[0])});
+  add('exch','Değişim / iade süreci açık','Servis değişim veya iade kararı verdi, adımlar tamamlanmadı.',S.tickets.filter(t=>{const x=exInfo(t);return x&&!x.done}),'open',t=>{const x=exInfo(t);return (t.serviceResult==='iade'?'İade':'Değişim')+' · sıradaki adım: '+((x.steps.find(s=>!s[1])||[''])[0])});
   add('gec','Fatura süresi geçti','Fatura son tarihi dolan kayıtlar.',act.filter(t=>sla(t).left<0),'open',t=>sla(t).txt+' · '+t.firmName);
   return g}
 function remindCount(){return remindGroups().filter(g=>g.k!=='gec').reduce((a,g)=>a+g.items.length,0)}
