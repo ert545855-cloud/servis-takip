@@ -1438,7 +1438,7 @@ button.tl-seat.empty{cursor:pointer}button.tl-seat.empty:hover:not(:disabled) .a
       <a href="#sevkiyat" data-view="sevkiyat" class="staff"><svg viewBox="0 0 24 24"><path d="M2 7h11v9H2zM13 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg><span>Sevkiyatlar</span></a>
       <a href="#duyurular" data-view="duyurular"><svg viewBox="0 0 24 24"><path d="M4 10v4a1 1 0 0 0 1 1h3l6 4V5L8 9H5a1 1 0 0 0-1 1z"/><path d="M18 8.5a5 5 0 0 1 0 7"/></svg><span>Duyurular</span><em class="badge" id="nb-ann" hidden></em></a>
       <a href="#sohbet" data-view="sohbet"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/></svg><span>Sohbet</span><em class="badge" id="nb-chat" hidden></em></a>
-      <a href="#oyunlar" data-view="oyunlar" id="nav-games"><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 0 1 3.9 4.9l-1 4.4a2.4 2.4 0 0 1-4.2.9L14.6 16H9.4l-2.1 2.2a2.4 2.4 0 0 1-4.2-.9l-1-4.4A4 4 0 0 1 6 8z"/><path d="M8 11v3M6.5 12.5h3M15.5 12h.01M17.5 13.5h.01"/></svg><span>Oyunlar</span><em class="badge gold" id="nb-games" hidden></em></a>
+      <a href="#oyunlar" data-view="oyunlar" id="nav-games" hidden><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 0 1 3.9 4.9l-1 4.4a2.4 2.4 0 0 1-4.2.9L14.6 16H9.4l-2.1 2.2a2.4 2.4 0 0 1-4.2-.9l-1-4.4A4 4 0 0 1 6 8z"/><path d="M8 11v3M6.5 12.5h3M15.5 12h.01M17.5 13.5h.01"/></svg><span>Oyunlar</span><em class="badge gold" id="nb-games" hidden></em></a>
       <a href="#takvim" data-view="takvim" class="staff"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Tarihe Göre</span></a>
       <a href="#musteriler" data-view="musteriler" class="staff"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .7 3.2 2.4 3.6 5.2"/></svg><span>Müşteriler</span></a>
       <a href="#raporlar" data-view="raporlar" class="staff"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span>Raporlar</span></a>
@@ -2332,6 +2332,7 @@ const VIEWS=['pano','talepler','sevkiyat','duyurular','sohbet','oyunlar','takvim
 function route(){
   const h=(location.hash||'').replace('#','');
   S.view=VIEWS.includes(h)?h:(S.isSeller?'talepler':'pano');
+  if(S.view==='oyunlar'&&!S.games){S.view=S.isSeller?'talepler':'pano';try{history.replaceState(null,'','#'+S.view)}catch(_){}} // oyunlar şimdilik kilitli
   if(S.isSeller&&!['talepler','duyurular','sohbet','oyunlar'].includes(S.view))S.view='talepler';
   for(const v of VIEWS)$('view-'+v).hidden=v!==S.view;
   document.querySelectorAll('.nav a').forEach(a=>{if(a.dataset.view===S.view)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
@@ -2828,7 +2829,7 @@ function connectEvents(){
 }
 function applyRole(){
   const r=S.meUser&&S.meUser.role;S.canWrite=r!=='viewer';S.isAdmin=r==='admin';S.isSeller=r==='satici';
-  banner(S.canWrite?'':'Görüntüleme yetkiniz var. Kayıt açmak ve değiştirmek için yöneticiden yetki isteyin.');
+  banner(S.canWrite?'':'Görüntüleme yetkiniz var. Kayıt açmak ve değiştirmek için sevkiyattan yetki isteyin.');
   $('me-name').textContent=S.meUser?S.meUser.name:'';if(typeof pfAvatarRefresh==='function')pfAvatarRefresh();
   document.querySelectorAll('.nav a.staff').forEach(a=>{a.hidden=S.isSeller});
   $('btn-full').hidden=S.isSeller;
@@ -2836,7 +2837,7 @@ function applyRole(){
 async function loadAll(silent){
   try{
     const d=await call('GET','/api/bootstrap');
-    S.me=d.me.id;S.meUser=d.me;S.users=d.users;S.users.forEach(u=>{if(u.avatar)S.names['av:'+u.id]='/api/files/'+u.avatar});S.pushKey=d.push||null;S.mailEnabled=!!d.mailEnabled;
+    S.me=d.me.id;S.meUser=d.me;S.users=d.users;S.users.forEach(u=>{if(u.avatar)S.names['av:'+u.id]='/api/files/'+u.avatar});S.pushKey=d.push||null;S.mailEnabled=!!d.mailEnabled;S.games=!!(d.features&&d.features.games);if(!S.games){const n=$('nav-games');if(n)n.hidden=true}
     for(const c of COLS)S[c]=d.data[c]||[];
     S.tickets=S.tickets.map(fixT);
     const st=(d.data.settings||[]).find(x=>x.id==='main');S.settings={...DEF_SETTINGS,...(st||{})};delete S.settings.id;rebuildHol();
@@ -2863,7 +2864,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-lmode]');i
 function pendingNote(email,msg){const n=$('l-msg');n.className='lnote';n.innerHTML='';const p=document.createElement('div');p.textContent=msg;n.appendChild(p);
   const b=document.createElement('button');b.type='button';b.className='btn small';b.textContent='Doğrulama e-postasını tekrar gönder';
   b.onclick=async()=>{b.disabled=true;try{const r=await xpost('/api/resend-verification',{email});const d=await r.json().catch(()=>({}));
-    p.textContent=r.ok?(d.mailSent?'Doğrulama e-postası tekrar gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin.':d.approvalSent?'Onay isteği yöneticiye tekrar e-postayla gönderildi. Onaylanınca giriş yapabilirsiniz.':'E-posta şu an gönderilemedi. Yöneticiniz hesabınızı uygulamadan onaylayabilir.'):(d.error||'Gönderilemedi');n.className='lnote'+(r.ok&&(d.mailSent||d.approvalSent)?' ok':'')}catch(_){p.textContent='Sunucuya ulaşılamadı'}finally{b.disabled=false}};
+    p.textContent=r.ok?(d.mailSent?'Doğrulama e-postası tekrar gönderildi. Gelen kutunuzu ve istenmeyen klasörünü kontrol edin.':d.approvalSent?'Onay isteği sevkiyata tekrar e-postayla gönderildi. Onaylanınca giriş yapabilirsiniz.':'E-posta şu an gönderilemedi. Sevkiyat hesabınızı uygulamadan onaylayabilir.'):(d.error||'Gönderilemedi');n.className='lnote'+(r.ok&&(d.mailSent||d.approvalSent)?' ok':'')}catch(_){p.textContent='Sunucuya ulaşılamadı'}finally{b.disabled=false}};
   n.appendChild(b)}
 $('lform').addEventListener('submit',async e=>{e.preventDefault();const b=$('l-btn');b.disabled=true;$('l-msg').textContent='';
   try{const r=await xpost('/api/login',{username:$('l-user').value,password:$('l-pass').value});
@@ -2878,8 +2879,8 @@ $('regform').addEventListener('submit',async e=>{e.preventDefault();const b=$('g
     if(!r.ok){$('l-msg').className='lnote';$('l-msg').textContent=d.error||'Kayıt yapılamadı';return}
     $('regform').reset();lmode('login');$('l-user').value=email;
     if(d.mailSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. '+email+' adresine doğrulama bağlantısı gönderdik. Bağlantıya tıklayınca hesabınız açılır ve giriş yapabilirsiniz. E-posta birkaç dakika içinde gelmezse istenmeyen (spam) klasörüne bakın.'}
-    else if(d.approvalSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. Onay isteği yöneticiye e-postayla gönderildi; yönetici onaylayınca '+email+' ve şifrenizle giriş yapabilirsiniz.'}
-    else pendingNote(email,'Kaydınız alındı ancak onay e-postası şu an gönderilemedi. Yöneticiniz hesabınızı uygulamadan onaylayınca giriş yapabilirsiniz.');
+    else if(d.approvalSent){$('l-msg').className='lnote ok';$('l-msg').textContent='Kaydınız alındı. Onay isteği sevkiyata e-postayla gönderildi; sevkiyat onaylayınca '+email+' ve şifrenizle giriş yapabilirsiniz.'}
+    else pendingNote(email,'Kaydınız alındı ancak onay e-postası şu an gönderilemedi. Sevkiyat hesabınızı uygulamadan onaylayınca giriş yapabilirsiniz.');
   }catch(_){$('l-msg').className='lnote';$('l-msg').textContent='Sunucuya ulaşılamadı, tekrar deneyin.'}finally{b.disabled=false}});
 $('fgform').addEventListener('submit',async e=>{e.preventDefault();
   try{const r=await xpost('/api/forgot',{email:$('f-email').value});const d=await r.json().catch(()=>({}));
@@ -2901,14 +2902,14 @@ $('pw-form').addEventListener('submit',async e=>{e.preventDefault();
   try{await call('POST','/api/me/password',{current:$('pw-cur').value,next:$('pw-new').value});$('pw-modal').hidden=true;toast('Şifreniz değiştirildi')}catch(err){$('pw-msg').textContent=errMsg(err)}});
 
 /* users admin */
-const ROLE_LBL={admin:'Yönetici',user:'Personel',satici:'Satıcı (sadece talepler)',viewer:'Sadece görüntüler'};
+const ROLE_LBL={admin:'Sevkiyat',user:'Personel',satici:'Satıcı (sadece talepler)',viewer:'Sadece görüntüler'};
 function usersPanel(){
   if(!S.isAdmin)return '';
   const roleSel=(id,v)=>`<select class="inp" data-urole="${esc(id)}" ${id===S.me?'disabled':''}>${Object.entries(ROLE_LBL).map(([k,l])=>`<option value="${k}" ${v===k?'selected':''}>${l}</option>`).join('')}</select>`;
   const pend=S.users.filter(u=>u.status==='pending');
   const others=S.users.filter(u=>u.status!=='pending');
   const row=u=>`<li><div style="flex:1;min-width:0"><div class="nm">${esc(u.name)}${u.id===S.me?' (siz)':''}${u.status==='disabled'?' · <span style="color:var(--bad)">devre dışı</span>':''}</div><div class="sub">${esc([u.email||u.username,u.branch,u.phone].filter(Boolean).join(' · '))}</div></div>${u.status==='pending'?`<button class="btn small primary" type="button" data-uapprove="${esc(u.id)}">Onayla</button>`:roleSel(u.id,u.role)}${u.id===S.me?'':`<button class="btn small" type="button" data-upass="${esc(u.id)}">Şifre</button><button class="btn small danger" type="button" data-udel="${esc(u.id)}">Sil</button>`}</li>`;
-  return `<section class="panel"><div class="panel-h"><h3>Kullanıcılar</h3><span>${S.users.length}</span><p>Satıcılar giriş ekranından kendileri kayıt olur ve e-postalarını doğrular; sadece Ürün Talepleri sayfasını görürler. Personel ve yöneticileri buradan ekleyin.</p></div>
+  return `<section class="panel"><div class="panel-h"><h3>Kullanıcılar</h3><span>${S.users.length}</span><p>Satıcılar giriş ekranından kendileri kayıt olur; e-postalarını doğrulayınca ya da siz onaylayınca giriş yapabilirler ve sadece Ürün Talepleri sayfasını görürler. Personel ve sevkiyat hesaplarını buradan ekleyin.</p></div>
     ${pend.length?`<div style="padding:10px 14px;background:var(--warn-soft);border-bottom:1px solid var(--line-2);font-size:.88rem"><b>${pend.length} kayıt e-posta doğrulaması bekliyor.</b> E-posta ulaşmadıysa “Onayla” ile hesabı siz açabilirsiniz.</div><ul class="list">${pend.map(row).join('')}</ul>`:''}
     <form class="add" id="u-form"><input class="inp" id="u-username" placeholder="Kullanıcı adı" required autocomplete="off"><input class="inp" id="u-name" placeholder="Ad soyad" required><input class="inp" id="u-email" type="email" placeholder="E-posta (isteğe bağlı)"><input class="inp" id="u-branch" list="dl-branches" placeholder="Şube (boşsa Ümraniye)"><input class="inp" id="u-pass" placeholder="Şifre (en az 6)" required autocomplete="new-password"><select class="inp" id="u-role">${Object.entries(ROLE_LBL).map(([k,l])=>`<option value="${k}" ${k==='user'?'selected':''}>${l}</option>`).join('')}</select><button class="btn primary small" type="submit">Kullanıcı ekle</button></form>
     <ul class="list">${[...others].sort(byName).map(row).join('')}</ul></section>`;
@@ -2985,7 +2986,7 @@ function renderReq(){
     <select class="inp" id="rf-purpose" aria-label="Kimin için"><option value="">Müşteri + mağaza</option><option value="musteri" ${S.rPurpose==='musteri'?'selected':''}>Müşteri için</option><option value="magaza" ${S.rPurpose==='magaza'?'selected':''}>Mağaza için</option></select>
     ${S.isSeller?`<span class="req-hint">Talebinizin durumu değiştikçe ${esc((S.meUser&&S.meUser.email)||'e-posta adresinize')} bilgi gönderilir.</span>`:''}</div>`});
   const list=reqFiltered();
-  $('rmsg').innerHTML=S.loaded.requests&&!all.length?`<div class="empty-hero"><div><h2>Henüz ürün talebi yok</h2><p>${S.isSeller?'Başka bir şubeden istemek istediğiniz ürünün adını ve kodunu girin, müşteri için mi mağaza için mi olduğunu seçin. Talep yöneticinin panosuna düşer; diğer şubeye iletildiğinde size e-posta gelir.':'Satıcılar giriş ekranından kayıt olup ürün talebi açtığında talepler burada “Yeni Talep” sütununa düşer. Kartı “Talep Edildi”ye taşıdığınızda satıcıya otomatik e-posta gider.'}</p></div><button class="btn primary" type="button" data-act="rnew" style="background:#B7791F;border-color:#B7791F">+ Yeni ürün talebi</button></div>`:'';
+  $('rmsg').innerHTML=S.loaded.requests&&!all.length?`<div class="empty-hero"><div><h2>Henüz ürün talebi yok</h2><p>${S.isSeller?'Başka bir şubeden istemek istediğiniz ürünün adını ve kodunu girin, müşteri için mi mağaza için mi olduğunu seçin. Talep sevkiyatın panosuna düşer; diğer şubeye iletildiğinde size e-posta gelir.':'Satıcılar giriş ekranından kayıt olup ürün talebi açtığında talepler burada “Yeni Talep” sütununa düşer. Kartı “Talep Edildi”ye taşıdığınızda satıcıya otomatik e-posta gider.'}</p></div><button class="btn primary" type="button" data-act="rnew" style="background:#B7791F;border-color:#B7791F">+ Yeni ürün talebi</button></div>`:'';
   $('rboard').innerHTML=REQ_ST.map(st=>{
     const items=list.filter(r=>(r.status||'yeni')===st.k).sort((a,b)=>((b.priority==='acil')-(a.priority==='acil'))||String(st.k==='yeni'?a.createdAt:b.updatedAt||'').localeCompare(String(st.k==='yeni'?b.createdAt:a.updatedAt||'')));
     return `<section class="rcol" data-rstatus="${st.k}"><div class="rcol-h"><div class="row"><h3>${st.t}</h3><span class="n">${items.length}</span></div><p>${st.d}</p></div><div class="rcol-b">${items.length?items.map(rcardHTML).join(''):`<div class="r-empty">${!S.isSeller&&S.canWrite?'Kartı buraya sürükleyin':'Talep yok'}</div>`}</div></section>`}).join('');
@@ -3329,7 +3330,7 @@ function afterLogin(){
   const p=new URLSearchParams(location.search);const k=p.get('k');
   if(p.get('ch')){C.pend=p.get('ch');history.replaceState(null,'',location.pathname+'#sohbet');location.hash='sohbet'}
   if(p.get('call')){C.autoAnswer={room:p.get('call'),answer:p.get('answer')==='1'};history.replaceState(null,'',location.pathname+'#sohbet');location.hash='sohbet';setTimeout(()=>{if(C.autoAnswer&&!CALL.room&&!RING){toast('Arama sona ermiş');C.autoAnswer=null}},9000)}
-  if(p.get('masa')){TB.pend=p.get('masa');G.tab='masa';G.built=false;history.replaceState(null,'',location.pathname+'#oyunlar');location.hash='oyunlar'}
+  if(p.get('masa')&&S.games){TB.pend=p.get('masa');G.tab='masa';G.built=false;history.replaceState(null,'',location.pathname+'#oyunlar');location.hash='oyunlar'}
   loadChat();setTimeout(syncPush,1500);loadTables();
   if(k&&!S.isSeller){const t=S.tickets.find(x=>x.id===k);if(t){location.hash='pano';setTimeout(()=>openDrawer(t),60)}else toast('Kayıt bulunamadı')}
   if(k)history.replaceState(null,'',location.pathname+location.hash);
@@ -4193,7 +4194,7 @@ function renderHead(){
 function renderMembers(){
   const el=$('ch-members');const c=chObj(C.cur);if(!c||c.kind!=='text'){el.innerHTML='';return}
   const list=C.users.filter(u=>audOkC(u,c.audience));const on=list.filter(u=>isOnline(u.id)),off=list.filter(u=>!isOnline(u.id));
-  const row=u=>`<button type="button" class="mem ${isOnline(u.id)?'':'off'}" ${u.id!==S.me?`data-dmu="${esc(u.id)}" title="Mesaj gönder"`:''}><span class="avw">${avatar(u.id,u.name)}<i class="pdot ${isOnline(u.id)?'on':''}"></i></span><span style="min-width:0">${esc(u.name)}${u.id===S.me?' (siz)':''}<small>${esc(u.role==='satici'?'Satıcı'+(u.branch?' · '+u.branch:''):u.role==='admin'?'Yönetici':'Personel')}</small></span></button>`;
+  const row=u=>`<button type="button" class="mem ${isOnline(u.id)?'':'off'}" ${u.id!==S.me?`data-dmu="${esc(u.id)}" title="Mesaj gönder"`:''}><span class="avw">${avatar(u.id,u.name)}<i class="pdot ${isOnline(u.id)?'on':''}"></i></span><span style="min-width:0">${esc(u.name)}${u.id===S.me?' (siz)':''}<small>${esc(u.role==='satici'?'Satıcı'+(u.branch?' · '+u.branch:''):u.role==='admin'?'Sevkiyat':'Personel')}</small></span></button>`;
   el.innerHTML=`<div class="cs-sec"><span>Çevrimiçi — ${on.length}</span></div>${on.map(row).join('')}<div class="cs-sec"><span>Çevrimdışı — ${off.length}</span></div>${off.map(row).join('')}`}
 
 /* mesajlar */
@@ -4219,7 +4220,7 @@ function msgHTML(m,prev){
   return pre+`<div class="msg ${g?'g':''} ${mine?'mine':''} ${men?'men':''}" id="m-${esc(m.id)}" data-mid="${esc(m.id)}">
     ${m.reply?`<div class="m-rep" data-jump="${esc(m.reply.id)}"><b>@${esc(m.reply.name)}</b><span class="tx">${esc(m.reply.text)}</span></div>`:''}
     ${g?`<time class="m-t2">${esc(new Date(m.at).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'}))}</time>`:avatar(m.uid,m.name)}
-    <div class="m-c">${g?'':`<div class="m-h"><b style="color:hsl(${(()=>{let h=0;for(const c of String(m.uid))h=(h*31+c.charCodeAt(0))>>>0;return h%360})()} 60% 72%)" data-dmu="${mine?'':esc(m.uid)}">${esc(m.name)}</b>${u&&u.role==='admin'?'<span class="tag">YÖNETİCİ</span>':''}<time title="${esc(new Date(m.at).toLocaleString('tr-TR'))}">${esc(fmtTime(m.at))}</time></div>`}
+    <div class="m-c">${g?'':`<div class="m-h"><b style="color:hsl(${(()=>{let h=0;for(const c of String(m.uid))h=(h*31+c.charCodeAt(0))>>>0;return h%360})()} 60% 72%)" data-dmu="${mine?'':esc(m.uid)}">${esc(m.name)}</b>${u&&u.role==='admin'?'<span class="tag">SEVKİYAT</span>':''}<time title="${esc(new Date(m.at).toLocaleString('tr-TR'))}">${esc(fmtTime(m.at))}</time></div>`}
       ${m.deleted?'<div class="m-x del">Bu mesaj silindi</div>':`<div class="m-x">${m.text?fmtMsg(m.text):''}${m.editedAt?'<span class="ed">(düzenlendi)</span>':''}</div>`}
       ${files?`<div class="m-files">${files}</div>`:''}
       ${rx.length?`<div class="m-rx">${rx.map(([e,ids])=>`<button type="button" class="rx ${ids.includes(S.me)?'on':''}" data-rx="${e}" title="${esc(ids.map(uname).join(', '))}">${e}<b>${ids.length}</b></button>`).join('')}</div>`:''}
@@ -4392,7 +4393,7 @@ function renderResults(){const r=C.search;const el=$('ch-results');if(!r){el.hid
   el.innerHTML=`<div class="rh">“<b>${esc(r.q)}</b>” için ${r.items.length} sonuç ${r.all?'(tüm sohbetler)':'(bu sohbet)'}<span style="flex:1"></span>${r.all?'':'<button type="button" data-rall>Tüm sohbetlerde ara</button>'}<button type="button" data-rclose>Kapat</button></div>
    ${r.items.length?r.items.map(m=>`<button type="button" class="ri" data-rres="${esc(m.id)}" data-rch="${esc(m.ch)}"><small>${m.ch.startsWith('dm_')?'Özel mesaj · '+esc(chName(m.ch)):'#'+esc(chName(m.ch))} · ${esc(fmtTime(m.at))}</small><b>${esc(m.name)}</b>: ${hl(m.text)}</button>`).join(''):'<p style="padding:16px;color:var(--dm)">Sonuç yok.</p>'}`}
 function chModal(html){let m=$('ch-modal');m.querySelector('.login-card').innerHTML=html;m.hidden=false;const f=m.querySelector('input,select');if(f)setTimeout(()=>f.focus(),30);return m}
-function openUserPicker(){const draw=q=>{const k=norm(q);return C.users.filter(u=>u.id!==S.me&&(!k||norm(u.name+' '+(u.branch||'')).includes(k))).sort((a,b)=>(isOnline(b.id)-isOnline(a.id))||a.name.localeCompare(b.name,'tr')).map(u=>`<button type="button" class="mem ${isOnline(u.id)?'':'off'}" data-pick="${esc(u.id)}"><span class="avw">${avatar(u.id,u.name)}<i class="pdot ${isOnline(u.id)?'on':''}"></i></span><span>${esc(u.name)}<small>${esc(u.role==='satici'?'Satıcı'+(u.branch?' · '+u.branch:''):u.role==='admin'?'Yönetici':'Personel')}</small></span></button>`).join('')||'<p style="color:var(--dm)">Kişi bulunamadı.</p>'};
+function openUserPicker(){const draw=q=>{const k=norm(q);return C.users.filter(u=>u.id!==S.me&&(!k||norm(u.name+' '+(u.branch||'')).includes(k))).sort((a,b)=>(isOnline(b.id)-isOnline(a.id))||a.name.localeCompare(b.name,'tr')).map(u=>`<button type="button" class="mem ${isOnline(u.id)?'':'off'}" data-pick="${esc(u.id)}"><span class="avw">${avatar(u.id,u.name)}<i class="pdot ${isOnline(u.id)?'on':''}"></i></span><span>${esc(u.name)}<small>${esc(u.role==='satici'?'Satıcı'+(u.branch?' · '+u.branch:''):u.role==='admin'?'Sevkiyat':'Personel')}</small></span></button>`).join('')||'<p style="color:var(--dm)">Kişi bulunamadı.</p>'};
   const m=chModal(`<div style="display:flex;align-items:center;gap:10px"><h2 style="margin:0;font-family:var(--f-display);flex:1;font-size:1.1rem">Kime mesaj göndereceksiniz?</h2><button type="button" data-mclose class="cs-ib" aria-label="Kapat">×</button></div><input class="inp" id="up-q" placeholder="İsim veya şube ara"><div class="ulist" id="up-list">${draw('')}</div>`);
   $('up-q').oninput=()=>{$('up-list').innerHTML=draw($('up-q').value)};
   m.onclick=e=>{if(e.target===m||e.target.closest('[data-mclose]')){m.hidden=true;return}const p=e.target.closest('[data-pick]');if(p){m.hidden=true;openChannel(dmIdC(S.me,p.dataset.pick))}}}
@@ -4729,9 +4730,9 @@ const GAME_INFO={
   hafiza:{name:'Hafıza',desc:'Kartları çevirip eşlerini bulun. Ne kadar az hamle, o kadar yüksek puan.',art:'<div class="g"><span>📺</span><span class="f"></span><span>🧺</span><span class="f"></span><span class="f"></span><span>🛋️</span><span class="f"></span><span>📺</span></div>',cls:'art-mem'},
   adam:{name:'Adam Asmaca',desc:'Mağazadaki ürünlerden gizli kelimeyi bulun. Üst üste bildikçe puan artar.',art:'<div class="w">K_ŞE</div>',cls:'art-hang'}};
 const SOLO_KEYS=['g2048','yilan','hafiza','adam'];
-async function loadGames(){try{G.st=await call('GET','/api/games/state');gamesBadge();if(S.view==='oyunlar')renderGames(false)}catch(_){}}
+async function loadGames(){if(!S.games)return;try{G.st=await call('GET','/api/games/state');gamesBadge();if(S.view==='oyunlar')renderGames(false)}catch(_){}}
 function myTurn(g){const me=g.players.find(p=>p.id===S.me);return g.status==='playing'&&me&&g.state.turn===me.mark}
-function gamesBadge(){const st=G.st;const nav=$('nav-games');if(nav)nav.hidden=!!st&&!st.enabled;
+function gamesBadge(){const st=G.st;const nav=$('nav-games');if(nav)nav.hidden=!S.games||!st||!st.enabled;
   const n=(st?st.games.filter(g=>(g.status==='invite'&&g.players[1].id===S.me)||myTurn(g)).length:0)+(typeof TB!=='undefined'?Object.values(TB.views).filter(v=>v.status==='playing'&&v.me>=0&&v.turn===v.me).length:0);const e=$('nb-games');if(e){e.hidden=!n;e.textContent=n;e.title=n+' oyun sizi bekliyor'}mbarUpdate()}
 function onGameEvent(m){const g=m.game;if(!G.st)G.st={enabled:true,games:[],leaderboard:{},wins:{},best:{}};
   const i=G.st.games.findIndex(x=>x.id===g.id);const prev=i>=0?G.st.games[i]:null;if(i>=0)G.st.games[i]=g;else G.st.games.unshift(g);
@@ -4745,7 +4746,7 @@ function onGameEvent(m){const g=m.game;if(!G.st)G.st={enabled:true,games:[],lead
 function renderGames(full){
   const v=$('view-oyunlar');const st=G.st;
   if(!st){v.innerHTML='<div class="empty-hero"><div><h2>Oyunlar yükleniyor…</h2></div></div>';G.built=false;loadGames();return}
-  if(!st.enabled){v.innerHTML='<div class="page"><div class="gm-off"><h2>Oyunlar kapalı</h2><p>Yönetici oyunları şu an kapattı.</p></div></div>';G.built=false;return}
+  if(!st.enabled){v.innerHTML='<div class="page"><div class="gm-off"><h2>Oyunlar kapalı</h2><p>Oyunlar şu an kapalı.</p></div></div>';G.built=false;return}
   const tab=G.tab||'oyna';
   if(!G.built||full||G.builtTab!==tab){v.innerHTML=`<div class="page gm-page"><div class="page-h"><h1>Oyunlar</h1><p>Mola zamanı. İş arkadaşlarınıza meydan okuyun, masalara oturun ya da tek başınıza rekor kırın.</p></div><div id="gm-tabs">${gameTabs()}</div>
     ${tab==='oyna'?'<div class="gm-top" id="gm-top"></div><div class="gm-play" id="gm-play"></div><div class="gm-grid" id="gm-grid"></div>':tab==='skor'?'<div id="gm-league" class="gm-league"></div>':'<div id="gm-tables" class="gm-tables"></div>'}</div>`;G.built=true;G.builtTab=tab;G.playKey=null;stopSolo()}
@@ -4893,7 +4894,7 @@ function gameHang(box,sc){let word,cat,guessed,wrong,streak=0,total=0,over,won,l
   return {stop:()=>{window.removeEventListener('keydown',h);if(total>0&&!(over&&!won))submitScore('adam',total)}}}
 
 /* yönetici: oyun ayarı */
-function gamesPanel(){if(!S.isAdmin)return '';const st=S.settings;
+function gamesPanel(){if(!S.isAdmin||!S.games)return '';const st=S.settings;
   return `<section class="panel"><div class="panel-h"><h3>Oyunlar</h3><p>Mini oyunları açıp kapatabilirsiniz. Kapalıyken menüde görünmez.</p></div><form class="body" id="gm-form">
     <label class="toggle"><input type="checkbox" id="gm-on" ${st.gamesEnabled!==false?'checked':''}> Oyunlar açık</label>
     <label class="toggle"><input type="checkbox" id="gm-staff" ${st.gamesStaffOnly?'checked':''}> Sadece personel oynayabilsin (satıcılar göremesin)</label>
@@ -4959,7 +4960,7 @@ const TB={list:[],mine:[],kinds:{},views:{},cur:null,seenLast:{},loaded:false,op
 function srvNow(){return Date.now()+(TB.skew||0)}
 function gotView(v){if(v&&v.now)TB.skew=v.now-Date.now();return v}
 function tablesWaiting(){return TB.list.filter(t=>t.status==='open'&&!t.seats.some(s=>s&&s.id===S.me)&&t.seats.some(s=>!s)).length}
-async function loadTables(){try{const d=await call('GET','/api/tables');TB.list=d.tables;TB.mine=d.mine;TB.kinds=d.kinds;TB.loaded=true;for(const v of d.mine)TB.views[v.id]=v;
+async function loadTables(){if(!S.games)return;try{const d=await call('GET','/api/tables');TB.list=d.tables;TB.mine=d.mine;TB.kinds=d.kinds;TB.loaded=true;for(const v of d.mine)TB.views[v.id]=v;
   if(!TB.cur){const play=d.mine.find(v=>v.status==='playing')||d.mine.find(v=>v.status==='open');if(play)TB.cur=play.id}
   if(TB.pend){const id=TB.pend;TB.pend=null;const t=d.tables.find(x=>x.id===id);
     if(!t)toast('Bu masa kapanmış veya oyun bitmiş');

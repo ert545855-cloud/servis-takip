@@ -8,14 +8,12 @@
  *   DATABASE_URL     PostgreSQL bağlantı adresi (zorunlu)
  *   DB_SCHEMA        Tabloların tutulacağı şema (varsayılan "servis")
  *   ADMIN_USERNAME / ADMIN_PASSWORD / ADMIN_NAME   İlk yönetici (kullanıcı yokken oluşturulur)
+ *   GAMES_ENABLED    "1" yapılırsa oyunlar açılır (varsayılan: oyunlar kilitli, menüde görünmez, oynanamaz)
  *   SEED_JSON        Veritabanı boşken içe aktarılacak başlangıç verileri
  *   APP_URL          Sitenin adresi (e-posta bağlantıları için), ör. https://site.onrender.com
  *   BIRD_API_KEY     Bird e-posta API anahtarı (bk_eu1_… / bk_us1_…)
  *   MAIL_FROM        Gönderen adres (varsayılan onboarding@messagebird.dev)
  *   MAIL_FROM_NAME   Gönderen adı (varsayılan "Ümraniye Şampiyonları")
- *   FIREBASE_API_KEY Firebase projesinin Web API anahtarı (AIza…): kayıt doğrulama e-postası Firebase Authentication ile gönderilir
- *   BREVO_API_KEY    Brevo API anahtarı (xkeysib-…): Bird'ün ulaştıramadığı adreslere (ör. kayıt doğrulama) Brevo'dan gönderilir
- *   BREVO_SENDER     Brevo'da doğrulanmış gönderen adresi (boşsa hesaptaki ilk etkin gönderen kullanılır)
  *   VAPID_PUBLIC / VAPID_PRIVATE / VAPID_SUBJECT   Telefon bildirimleri için anahtarlar
  *   OLD_DATABASE_URL / OLD_DB_SCHEMA   Veritabanı boşken verileri bu eski veritabanından taşır
  *   PORT             Dinlenecek port
@@ -41,6 +39,7 @@ pool.on('connect', client => { client.query(`SET search_path TO ${DB_SCHEMA}`).c
 
 const APP_URL = (process.env.APP_URL || '').replace(/\/+$/, '');
 const BIRD_KEY = process.env.BIRD_API_KEY || '';
+const GAMES_ON = process.env.GAMES_ENABLED === '1'; // oyunlar şimdilik kilitli
 const MAIL_FROM = process.env.MAIL_FROM || 'onboarding@messagebird.dev';
 const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || APP_NAME;
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC || '';
@@ -94,49 +93,8 @@ function trDate(s) { if (!s) return '—'; const [y, m, d] = String(s).slice(0, 
 function dayDiff(a, b) { return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5); }
 
 /* ---------------- e-posta ---------------- */
-const BREVO_KEY = process.env.BREVO_API_KEY || '';
-let brevoFrom = process.env.BREVO_SENDER || '';
-// Bird alan adı doğrulanmadan (paylaşılan deneme alan adı) yalnızca hesap sahibine gönderir: bunu bir kez görünce diğer alıcılar doğrudan Brevo'dan gider
-const birdOk = new Set(); let birdSandbox = false;
-/* gönderim sırası: Bird (alıcı kabul edilirse), olmazsa Brevo */
-async function sendMail(m) {
-  if (!m.to) return { ok: false, reason: 'no_to' };
-  const to = String(m.to).trim().toLowerCase();
-  if (BIRD_KEY && !(BREVO_KEY && birdSandbox && !birdOk.has(to))) {
-    const r = await sendBird(m);
-    if (r.ok) birdOk.add(to);
-    if (r.ok || !BREVO_KEY) return r;
-    if (r.status === 422) birdSandbox = true;
-  }
-  if (BREVO_KEY) return sendBrevo(m);
-  return { ok: false, reason: 'no_key' };
-}
-async function brevoSender() {
-  if (brevoFrom) return brevoFrom;
-  try {
-    const r = await fetch('https://api.brevo.com/v3/senders', { headers: { 'api-key': BREVO_KEY, accept: 'application/json' } });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { console.warn('Brevo gönderen listesi alınamadı', r.status, JSON.stringify(d).slice(0, 300)); return ''; }
-    const s = (d.senders || []).find(x => x.active) || (d.senders || [])[0];
-    if (s) brevoFrom = s.email; else console.warn('Brevo hesabında doğrulanmış gönderen yok');
-  } catch (e) { console.warn('Brevo bağlantı hatası', e.message); }
-  return brevoFrom;
-}
-async function sendBrevo({ to, subject, html, text, attachments }) {
-  const from = await brevoSender(); if (!from) return { ok: false, reason: 'no_sender' };
-  const okExt = /\.(xlsx|xls|csv|pdf|txt|zip|png|jpe?g|docx?)$/i;
-  try {
-    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST', headers: { 'api-key': BREVO_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ sender: { email: from, name: MAIL_FROM_NAME }, to: [{ email: to }], subject, htmlContent: html, ...(text ? { textContent: text } : {}),
-        ...(attachments && attachments.length ? { attachment: attachments.map(a => ({ name: okExt.test(a.filename) ? a.filename : a.filename + '.txt', content: a.content })) } : {}) }),
-    });
-    if (!r.ok) { const body = await r.text().catch(() => ''); console.warn('E-posta gönderilemedi (Brevo)', to, r.status, body.slice(0, 300)); return { ok: false, reason: 'rejected', status: r.status }; }
-    console.log('E-posta gönderildi (Brevo):', to, subject);
-    return { ok: true };
-  } catch (e) { console.warn('E-posta hatası (Brevo)', e.message); return { ok: false, reason: 'network' }; }
-}
-async function sendBird({ to, subject, html, text, attachments }) {
+async function sendMail({ to, subject, html, text, attachments }) {
+  if (!BIRD_KEY || !to) return { ok: false, reason: 'no_key' };
   const region = (BIRD_KEY.match(/^bk_([a-z]{2}\d+)_/) || [])[1] || 'us1';
   try {
     const r = await fetch(`https://${region}.platform.bird.com/v1/email/messages`, {
@@ -161,7 +119,7 @@ function mailLayout(title, bodyHtml, cta) {
     <p style="font-size:12px;color:#6b7b78;text-align:center;margin-top:14px">Bu e-posta ${esc(APP_NAME)} sistemi tarafından otomatik gönderildi.</p>
   </div></body></html>`;
 }
-const mailEnabled = () => !!(BIRD_KEY || BREVO_KEY);
+const mailEnabled = () => !!BIRD_KEY;
 
 /* ---------------- şema ---------------- */
 async function migrate() {
@@ -182,7 +140,6 @@ async function migrate() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_before TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS approve_token TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS fb_verify BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS approve_expires TIMESTAMPTZ;
     CREATE UNIQUE INDEX IF NOT EXISTS users_email_uq ON users (lower(email)) WHERE email IS NOT NULL;
     CREATE TABLE IF NOT EXISTS sessions (
@@ -206,7 +163,7 @@ async function migrate() {
     const p = process.env.ADMIN_PASSWORD;
     if (!p) console.warn('Kullanıcı yok ve ADMIN_PASSWORD tanımlı değil: giriş yapılamayacak.');
     else {
-      await pool.query('INSERT INTO users (id, username, name, pass, role) VALUES ($1,$2,$3,$4,$5)', [newId(), u, process.env.ADMIN_NAME || 'Yönetici', hashPass(p), 'admin']);
+      await pool.query('INSERT INTO users (id, username, name, pass, role) VALUES ($1,$2,$3,$4,$5)', [newId(), u, process.env.ADMIN_NAME || 'Sevkiyat', hashPass(p), 'admin']);
       console.log('İlk yönetici oluşturuldu:', u);
     }
   }
@@ -223,9 +180,11 @@ async function migrate() {
   }
   await pool.query('DELETE FROM sessions WHERE expires_at < now()');
   await homeBranchMigrate();
+  await labelMigrate();
+  await branchSeed();
   await purgeTrash();
   await chat.migrate();
-  await tables.restore();
+  if (GAMES_ON) await tables.restore();
 }
 /* çöp kutusu: 30 günden eski silinenler kalıcı olarak silinir */
 const TRASH_DAYS = 30;
@@ -282,6 +241,30 @@ async function homeBranchMigrate() {
     await pool.query("INSERT INTO meta (key, value) VALUES ('home_branch_v1', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify({ branch: hb, users: u.rowCount, requests: r.rowCount, at: new Date().toISOString() })]);
     console.log(`Şube düzeltmesi: ${u.rowCount} kullanıcı ve ${r.rowCount} talep "${hb}" şubesine alındı`);
   } catch (e) { console.error('Şube düzeltmesi yapılamadı:', e.message); }
+}
+/* bir kerelik: "Yönetici" yazan adlar "Sevkiyat" olur (kullanıcı adı ve kayıtlardaki geçmiş yazıları) */
+async function labelMigrate() {
+  try {
+    if ((await pool.query("SELECT 1 FROM meta WHERE key = 'label_sevkiyat_v1'")).rows.length) return;
+    const u = await pool.query("UPDATE users SET name = 'Sevkiyat' WHERE lower(trim(name)) IN ('yönetici', 'yonetici') RETURNING id");
+    const d = await pool.query(`UPDATE docs SET data = replace(data::text, '"Yönetici"', '"Sevkiyat"')::jsonb WHERE strpos(data::text, '"Yönetici"') > 0 RETURNING id`);
+    await pool.query("UPDATE trash SET deleted_by_name = 'Sevkiyat' WHERE deleted_by_name = 'Yönetici'");
+    await pool.query("INSERT INTO meta (key, value) VALUES ('label_sevkiyat_v1', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify({ users: u.rowCount, docs: d.rowCount, at: new Date().toISOString() })]);
+    console.log(`Ad düzeltmesi: ${u.rowCount} kullanıcı, ${d.rowCount} kayıtta "Yönetici" → "Sevkiyat"`);
+  } catch (e) { console.error('Ad düzeltmesi yapılamadı:', e.message); }
+}
+/* bir kerelik: şube listesine eklenecek şubeler (zaten varsa eklenmez) */
+const BRANCH_SEED = ['Sancaktepe 1', 'Sancaktepe 2', 'Malatya', 'Eskişehir', 'Ihlamurkuyu', 'Soğanlık', 'Taşdelen', 'İzmit', 'Kahramanmaraş', 'Samsun', 'Elazığ', 'Adana', 'Pendik'];
+async function branchSeed() {
+  try {
+    if ((await pool.query("SELECT 1 FROM meta WHERE key = 'branch_seed_v1'")).rows.length) return;
+    const { rows } = await pool.query("SELECT data->>'name' AS name FROM docs WHERE coll = 'branches'");
+    const have = new Set(rows.map(r => brKey(r.name).replace(/\s+/g, '')));
+    const add = BRANCH_SEED.filter(n => !have.has(brKey(n).replace(/\s+/g, '')));
+    for (const name of add) await pool.query('INSERT INTO docs (coll, id, data) VALUES ($1,$2,$3)', ['branches', newId(), { name, createdAt: new Date().toISOString() }]);
+    await pool.query("INSERT INTO meta (key, value) VALUES ('branch_seed_v1', $1::jsonb) ON CONFLICT (key) DO NOTHING", [JSON.stringify({ added: add, at: new Date().toISOString() })]);
+    console.log('Şubeler eklendi:', add.join(', ') || '(hepsi zaten vardı)');
+  } catch (e) { console.error('Şubeler eklenemedi:', e.message); }
 }
 async function getDoc(coll, id) { const { rows } = await pool.query('SELECT data FROM docs WHERE coll=$1 AND id=$2', [coll, id]); return rows[0] ? { id, ...rows[0].data } : null; }
 async function getSettings() { return (await getDoc('settings', 'main')) || {}; }
@@ -511,7 +494,6 @@ app.post('/api/login', express.json({ limit: '10kb' }), wrap(async (req, res) =>
   const { rows } = await pool.query('SELECT * FROM users WHERE username = $1 OR lower(email) = $1 LIMIT 1', [id]);
   const u = rows[0];
   if (!u || !checkPass(req.body.password || '', u.pass)) return res.status(401).json({ error: 'Kullanıcı adı / e-posta veya şifre hatalı' });
-  if (u.status === 'pending') { const a = await fbActivate(u); if (a) u.status = a.status; }
   if (u.status === 'pending') return res.status(403).json({ error: 'Hesabınız henüz etkinleşmedi. E-posta adresinize gelen doğrulama bağlantısına tıklayın; gelen kutusunda yoksa istenmeyen (spam) klasörüne bakın.', pending: true, email: u.email });
   if (u.status !== 'active') return res.status(403).json({ error: 'Hesabınız devre dışı. Yöneticinize başvurun.' });
   tries.delete('login:' + req.ip);
@@ -526,67 +508,7 @@ app.post('/api/logout', wrap(async (req, res) => {
   res.setHeader('Set-Cookie', 'sid=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
   res.json({ ok: true });
 }));
-/* ---------------- Firebase ile e-posta doğrulama ----------------
- * Kayıt olan her kişi için Firebase Authentication'da gölge bir hesap açılır (şifresi sunucunun ürettiği, kişinin şifresinden bağımsız).
- * Doğrulama e-postasını Firebase gönderir (noreply@<proje>.firebaseapp.com, herhangi bir adrese, ücretsiz). Kişi bağlantıya tıklayınca
- * Firebase hesabı "doğrulandı" olur; uygulama girişte ya da dönüş bağlantısında bunu Firebase'e sorup hesabı açar. */
-const FB_KEY = process.env.FIREBASE_API_KEY || '';
-const fbOn = () => !!FB_KEY;
-const fbPass = email => crypto.createHmac('sha256', String(process.env.FIREBASE_PW_SECRET || process.env.DATABASE_URL || APP_NAME)).update('fb:' + String(email).toLowerCase()).digest('base64url').slice(0, 32);
-async function fbCall(method, body, headers) {
-  const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${method}?key=${encodeURIComponent(FB_KEY)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(headers || {}) }, body: JSON.stringify(body) });
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) { const m = (d && d.error && d.error.message) || 'HTTP ' + r.status; const e = new Error(m); e.fb = m; throw e; }
-  return d;
-}
-async function fbToken(email, fresh) {
-  const cred = { email, password: fbPass(email), returnSecureToken: true };
-  if (!fresh) {
-    try { return (await fbCall('signInWithPassword', cred)).idToken; }
-    catch (e) { if (!/INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND/.test(e.fb || '')) throw e; }
-    return (await fbCall('signUp', cred)).idToken;
-  }
-  try { return (await fbCall('signUp', cred)).idToken; }
-  catch (e) { if (!/EMAIL_EXISTS/.test(e.fb || '')) throw e; }
-  // yeniden kayıt: eski (belki doğrulanmış) gölge hesabı silip baştan aç; böylece başkası bu adresle kayıt olup eski doğrulamadan yararlanamaz
-  const idToken = (await fbCall('signInWithPassword', cred)).idToken;
-  await fbCall('delete', { idToken });
-  return (await fbCall('signUp', cred)).idToken;
-}
-async function fbSendVerify(req, email, fresh) {
-  try {
-    const idToken = await fbToken(email, fresh);
-    const h = { 'X-Firebase-Locale': 'tr' };
-    try { await fbCall('sendOobCode', { requestType: 'VERIFY_EMAIL', idToken, continueUrl: `${baseUrl(req)}/api/verify-fb?e=${encodeURIComponent(email)}` }, h); }
-    catch (e) { if (!/DOMAIN|CONTINUE_URI/.test(e.fb || '')) throw e; await fbCall('sendOobCode', { requestType: 'VERIFY_EMAIL', idToken }, h); } // dönüş adresi Firebase'de izinli değilse dönüş düğmesiz
-    console.log('Doğrulama e-postası Firebase ile gönderildi:', email);
-    return { ok: true };
-  } catch (e) { console.warn('Firebase doğrulama e-postası gönderilemedi', email, e.message); return { ok: false, reason: e.fb || 'network' }; }
-}
-async function fbVerified(email) {
-  try { const idToken = await fbToken(email); const d = await fbCall('lookup', { idToken }); return !!(d.users && d.users[0] && d.users[0].emailVerified); }
-  catch (e) { console.warn('Firebase doğrulama durumu alınamadı', email, e.message); return false; }
-}
-/* bekleyen hesap Firebase'de doğrulanmışsa aç */
-async function fbActivate(u) {
-  if (!fbOn() || !u || u.status !== 'pending' || !u.fb_verify || !u.email || !(await fbVerified(u.email))) return null;
-  const { rows } = await pool.query("UPDATE users SET status = 'active', email_verified = true, verify_token = NULL, approve_token = NULL WHERE id = $1 AND status = 'pending' RETURNING *", [u.id]);
-  if (!rows[0]) return null;
-  sessFlush(); broadcast({ type: 'user', user: publicUser(rows[0]) });
-  console.log('E-posta Firebase ile doğrulandı, hesap açıldı:', u.email);
-  return rows[0];
-}
-app.get('/api/verify-fb', wrap(async (req, res) => {
-  if (limited('vfb:' + req.ip, 20, 60 * 60e3)) return res.redirect('/?verified=0');
-  const email = String(req.query.e || '').trim().toLowerCase();
-  if (!validEmail(email)) return res.redirect('/?verified=0');
-  const { rows } = await pool.query('SELECT * FROM users WHERE lower(email) = $1 LIMIT 1', [email]);
-  const u = rows[0];
-  if (u && u.status === 'active') return res.redirect('/?verified=1');
-  res.redirect((await fbActivate(u)) ? '/?verified=1' : '/?verified=0');
-}));
-async function sendVerify(req, u, token, fresh) {
-  if (fbOn()) { const r = await fbSendVerify(req, u.email, fresh); if (r.ok) { await pool.query('UPDATE users SET fb_verify = true WHERE lower(email) = $1', [String(u.email).toLowerCase()]); return r; } }
+async function sendVerify(req, u, token) {
   const url = `${baseUrl(req)}/api/verify?token=${token}`;
   return sendMail({ to: u.email, subject: `${APP_NAME}: e-posta adresinizi doğrulayın`,
     html: mailLayout(`Hoş geldiniz ${u.name}`, '<p>Kaydınızı tamamlamak için aşağıdaki düğmeye tıklayıp e-posta adresinizi doğrulayın. Doğruladıktan sonra e-posta adresiniz ve şifrenizle giriş yapabilirsiniz.</p><p style="font-size:13px;color:#6b7b78">Bağlantı 48 saat geçerlidir. Bu kaydı siz yapmadıysanız bu e-postayı yok sayın.</p>', { url, label: 'E-postamı doğrula' }),
@@ -626,7 +548,7 @@ app.post('/api/register', express.json({ limit: '10kb' }), wrap(async (req, res)
   const id = newId(); const token = crypto.randomBytes(24).toString('hex'); const atok = crypto.randomBytes(24).toString('hex');
   await pool.query(`INSERT INTO users (id, username, name, pass, role, email, status, branch, phone, verify_token, verify_expires, approve_token, approve_expires) VALUES ($1,$2,$3,$4,'satici',$2,'pending',$5,$6,$7, now() + interval '48 hours', $8, now() + interval '7 days')`, [id, email, name, hashPass(password), branch, phone, token, atok]);
   // doğrulama e-postası kişinin kendi adresine gider; gönderilemezse yedek olarak yöneticiye onay e-postası gider
-  const r = await sendVerify(req, { name, email }, token, true);
+  const r = await sendVerify(req, { name, email }, token);
   const approvalSent = r.ok ? false : await sendApproval(req, { name, email, phone, branch }, atok);
   broadcast({ type: 'user', user: { id, username: email, name, role: 'satici', email, branch, phone, status: 'pending' } });
   pushStaff({ title: 'Yeni kayıt', body: r.ok ? `${name} (${branch}) kayıt oldu, e-posta doğrulaması bekleniyor` : `${name} (${branch}) kayıt oldu, onayınızı bekliyor`, url: `${baseUrl(req)}/#tanimlar` });
@@ -725,7 +647,7 @@ app.get('/api/bootstrap', wrap(auth), wrap(async (req, res) => {
   const data = {}; for (const c of COLLS) data[c] = [];
   for (const r of docs.rows) { if (seller && r.coll === 'announcements' && !annVisible(req.user, r.data)) continue; data[r.coll].push({ id: r.id, ...r.data }); }
   if (seller) { const st = await getSettings(); data.settings = [{ id: 'main', storeName: st.storeName || '', holidays: st.holidays || [], gamesEnabled: st.gamesEnabled, gamesStaffOnly: st.gamesStaffOnly }]; }
-  res.json({ me: publicUser(req.user), users: users.rows, data, push: pushReady ? VAPID_PUBLIC : null, mailEnabled: mailEnabled() });
+  res.json({ me: publicUser(req.user), users: users.rows, data, push: pushReady ? VAPID_PUBLIC : null, mailEnabled: mailEnabled(), features: { games: GAMES_ON } });
 }));
 
 app.get('/api/events', wrap(auth), (req, res) => {
@@ -1171,7 +1093,7 @@ app.patch('/api/users/:id', express.json({ limit: '10kb' }), wrap(auth), isAdmin
   const role = ROLES.has(req.body.role) ? req.body.role : u.role;
   const status = ['active', 'pending', 'disabled'].includes(req.body.status) ? req.body.status : u.status;
   const branch = req.body.branch != null ? String(req.body.branch).trim() || await homeBranch() : u.branch;
-  if (u.id === req.user.id && (role !== 'admin' || status !== 'active')) return res.status(400).json({ error: 'Kendi yönetici hesabınızı kısıtlayamazsınız' });
+  if (u.id === req.user.id && (role !== 'admin' || status !== 'active')) return res.status(400).json({ error: 'Kendi hesabınızın yetkisini düşüremez ya da kapatamazsınız' });
   let pass = u.pass;
   if (req.body.password) {
     if (String(req.body.password).length < 6) return res.status(400).json({ error: 'Şifre en az 6 karakter olmalı' });
@@ -1352,6 +1274,12 @@ function publicPage(store, body, st, title) {
 }
 
 /* sohbet, arama ve oyunlar */
+/* oyunlar kilitliyken oyun ve masa uçları kapalı */
+if (!GAMES_ON) {
+  app.get('/api/games/state', (req, res) => res.json({ enabled: false, locked: true, games: [], leaderboard: {}, wins: {}, best: {} }));
+  app.get('/api/tables', (req, res) => res.json({ tables: [], mine: [], kinds: {} }));
+  app.use(['/api/games', '/api/tables'], (req, res) => res.status(403).json({ error: 'Oyunlar şu an kapalı' }));
+}
 const chat = require('./chat')({ app, pool, express, wrap, auth, isAdmin, newId, clients, pushUser, baseUrl, validId, getSettings, APP_NAME });
 const tables = require('./tables')({ app, pool, express, wrap, auth, newId, clients, pushUser, baseUrl, validId, getSettings, appUrl: () => APP_URL_RAW() });
 
