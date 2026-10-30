@@ -16,7 +16,7 @@
  *   MAIL_FROM_NAME   Gönderen adı (varsayılan "Ümraniye Şampiyonları")
  *   VAPID_PUBLIC / VAPID_PRIVATE / VAPID_SUBJECT   Telefon bildirimleri için anahtarlar
  *   OLD_DATABASE_URL / OLD_DB_SCHEMA   Veritabanı boşken verileri bu eski veritabanından taşır
- *   PORT             Dinlenecek port
+ *   PORT / HOST      Dinlenecek port ve adres (HOST verilmezse tüm adresler)
  */
 const express = require('express');
 const crypto = require('crypto');
@@ -1372,6 +1372,8 @@ async function kickPendingApprovals() {
   if (rows.length) console.log('Bekleyen kayıtlar için yöneticiye onay e-postası gönderildi:', rows.length);
 }
 migrate().then(() => {
-  app.listen(PORT, () => console.log(`${APP_NAME} çalışıyor, port ${PORT} · e-posta: ${mailEnabled() ? 'açık' : 'kapalı'} · bildirim: ${pushReady ? 'açık' : 'kapalı'}`));
+  const HOST = process.env.HOST || ''; // bilgisayarda kurulumda yalnızca 127.0.0.1 dinlenir (dışarıya tünel üzerinden açılır)
+  const onUp = () => console.log(`${APP_NAME} çalışıyor, port ${PORT} · e-posta: ${mailEnabled() ? 'açık' : 'kapalı'} · bildirim: ${pushReady ? 'açık' : 'kapalı'}`);
+  if (HOST) app.listen(PORT, HOST, onUp); else app.listen(PORT, onUp);
   setTimeout(() => kickPendingApprovals().catch(e => console.warn('Onay e-postaları gönderilemedi', e.message)), 3000);
 }).catch(e => { console.error('Veritabanı hazırlanamadı:', e); process.exit(1); });
