@@ -45,7 +45,7 @@ const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || APP_NAME;
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC || '';
 const pushReady = !!(webpush && VAPID_PUBLIC && process.env.VAPID_PRIVATE);
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || APP_URL_RAW() || 'mailto:admin@example.com';
-function APP_URL_RAW() { const u = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, ''); return /^https:\/\//.test(u) ? u : ''; }
+function APP_URL_RAW() { const u = (process.env.APP_URL || process.env.RENDER_EXTERNAL_URL || (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : '')).replace(/\/+$/, ''); return /^https:\/\//.test(u) ? u : ''; }
 if (pushReady) webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, process.env.VAPID_PRIVATE);
 
 const COLLS = new Set(['tickets', 'firms', 'customers', 'categories', 'products', 'settings', 'requests', 'branches', 'shipments', 'announcements']);
@@ -202,22 +202,56 @@ async function purgeTrash() {
     if (rows.length) console.log('Çöp kutusundan kalıcı silindi:', rows.length);
   } catch (e) { console.warn('Çöp kutusu temizlenemedi', e.message); }
 }
+/* Yeni veritabanı boşken eski veritabanındaki tablolar aynen kopyalanır: kullanıcılar, kayıtlar, dosyalar, çöp kutusu,
+   bir kerelik düzeltme işaretleri (meta) ve sohbet. Tek işlemde yapılır; bir hata olursa hiçbir şey yazılmaz ve
+   uygulama kapanıp yeniden dener (boş veritabanıyla açılıp eski verilerin üzerine yeni kayıt girilmesin diye).
+   Oturumlar ve telefon bildirim abonelikleri taşınmaz: yeni adreste herkes bir kez yeniden giriş yapar. */
+const COPY_TABLES = ['users', 'docs', 'files', 'meta', 'trash', 'chat_channels', 'chat_messages', 'chat_reads', 'chat_prefs', 'games', 'game_scores'];
 async function migrateFromOld() {
   const oldUrl = process.env.OLD_DATABASE_URL;
   if (!oldUrl) return;
   const cnt = await pool.query('SELECT count(*)::int AS n FROM docs');
   if (cnt.rows[0].n > 0) return;
+  await chat.migrate();
   const oldSchema = /^[a-z_][a-z0-9_]{0,40}$/.test(process.env.OLD_DB_SCHEMA || '') ? process.env.OLD_DB_SCHEMA : 'servis';
-  const old = new Pool({ connectionString: oldUrl, ssl: /localhost|127\.0\.0\.1/.test(oldUrl) ? false : { rejectUnauthorized: false }, max: 2 });
+  const old = new Pool({ connectionString: oldUrl, ssl: /localhost|127\.0\.0\.1/.test(oldUrl) ? false : { rejectUnauthorized: false }, max: 2, connectionTimeoutMillis: 20000,
+    types: { getTypeParser: (oid, fmt) => (oid === 1184 || oid === 1114 ? v => v : require('pg').types.getTypeParser(oid, fmt)) } }); // zaman damgaları mikro saniyesiyle aynen kalsın
+  const cli = await pool.connect();
   try {
-    const q = t => old.query(`SELECT * FROM ${oldSchema}.${t}`);
-    const [docs, users, files] = await Promise.all([q('docs'), q('users'), q('files')]);
-    await pool.query('DELETE FROM users');
-    for (const u of users.rows) await pool.query('INSERT INTO users (id, username, name, pass, role, created_at, email, email_verified, status, branch, phone) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT DO NOTHING', [u.id, u.username, u.name, u.pass, u.role, u.created_at, u.email || null, !!u.email_verified, u.status || 'active', u.branch || null, u.phone || null]);
-    for (const d of docs.rows) await pool.query('INSERT INTO docs (coll, id, data, updated_at) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING', [d.coll, d.id, d.data, d.updated_at]);
-    for (const f of files.rows) await pool.query('INSERT INTO files (id, name, type, size, data, uploaded_by, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING', [f.id, f.name, f.type, f.size, f.data, f.uploaded_by, f.created_at]);
-    console.log(`Eski veritabanından taşındı: ${docs.rows.length} belge, ${users.rows.length} kullanıcı, ${files.rows.length} dosya`);
-  } catch (e) { console.error('Eski veritabanından taşıma başarısız:', e.message); } finally { await old.end().catch(() => {}); }
+    await cli.query(`SET search_path TO ${DB_SCHEMA}`);
+    const oc = await old.query('SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = $1', [oldSchema]);
+    const nc = await cli.query('SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema = $1', [DB_SCHEMA]);
+    const has = {}; for (const r of oc.rows) (has[r.table_name] ||= new Set()).add(r.column_name);
+    const typ = {}; for (const r of nc.rows) (typ[r.table_name] ||= {})[r.column_name] = r.data_type;
+    if (!has.docs) throw new Error(`eski veritabanında "${oldSchema}" şeması bulunamadı`);
+    await cli.query('BEGIN');
+    const report = [];
+    for (const t of COPY_TABLES) {
+      if (!has[t] || !typ[t]) continue;
+      const cols = Object.keys(typ[t]).filter(c => has[t].has(c));
+      const total = (await old.query(`SELECT count(*)::int AS n FROM ${oldSchema}.${t}`)).rows[0].n;
+      if (!cols.length || !total) continue;
+      await cli.query(`DELETE FROM ${t}`);
+      const qc = cols.map(c => `"${c}"`).join(', ');
+      const isJson = c => /^json/.test(typ[t][c]);
+      const ph = cols.map((c, i) => `$${i + 1}${isJson(c) ? '::' + typ[t][c] : ''}`).join(', ');
+      const page = t === 'files' ? 20 : 500;
+      for (let off = 0; off < total; off += page) {
+        const { rows } = await old.query(`SELECT ${qc} FROM ${oldSchema}.${t} ORDER BY ctid LIMIT ${page} OFFSET ${off}`);
+        for (const r of rows) await cli.query(`INSERT INTO ${t} (${qc}) VALUES (${ph}) ON CONFLICT DO NOTHING`, cols.map(c => isJson(c) && r[c] != null ? JSON.stringify(r[c]) : r[c]));
+      }
+      for (const c of cols) {
+        const s = (await cli.query('SELECT pg_get_serial_sequence($1, $2) AS s', [`${DB_SCHEMA}.${t}`, c])).rows[0].s;
+        if (s) await cli.query(`SELECT setval($1, GREATEST(COALESCE((SELECT max("${c}") FROM ${t}), 0), 1))`, [s]);
+      }
+      report.push(`${t} ${total}`);
+    }
+    await cli.query('COMMIT');
+    console.log('Eski veritabanından taşındı:', report.join(', ') || 'eski veritabanı boş');
+  } catch (e) {
+    await cli.query('ROLLBACK').catch(() => {});
+    throw new Error('Eski veritabanından taşıma başarısız: ' + e.message);
+  } finally { cli.release(); await old.end().catch(() => {}); }
 }
 /* mağaza tek şube: kayıt olan herkes ana şubeden (Ümraniye) sayılır. Şube listesinde "Ümraniye ..." diye bir kayıt varsa o ad kullanılır. */
 const HOME_BRANCH_BASE = String(process.env.HOME_BRANCH || 'Ümraniye').trim();
